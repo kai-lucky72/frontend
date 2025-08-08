@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Search, Clock, CheckCircle, XCircle, AlertCircle, Download } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getManagerAttendance, updateManagerTimeframe } from "@/lib/api"
 
 interface AttendanceRecord {
   id: string
@@ -35,61 +37,117 @@ interface AttendanceRecord {
 }
 
 export default function AttendancePage() {
-  const [attendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      id: "1",
-      agentName: "John Doe",
-      workId: "AGT001",
-      date: "2024-01-15",
-      timeIn: "08:30",
-      location: "Downtown Office",
-      status: "present",
-      sector: "Life Insurance",
-    },
-    {
-      id: "2",
-      agentName: "Sarah Smith",
-      workId: "AGT002",
-      date: "2024-01-15",
-      timeIn: "09:15",
-      location: "Uptown Office",
-      status: "late",
-      sector: "Health Insurance",
-    },
-    {
-      id: "3",
-      agentName: "Mike Johnson",
-      workId: "AGT003",
-      date: "2024-01-15",
-      timeIn: "08:15",
-      location: "Midtown Office",
-      status: "present",
-      sector: "Auto Insurance",
-    },
-    {
-      id: "4",
-      agentName: "Lisa Brown",
-      workId: "AGT004",
-      date: "2024-01-15",
-      timeIn: "-",
-      location: "-",
-      status: "absent",
-      sector: "Property Insurance",
-    },
-  ])
-
+  const today = new Date()
+  const [selectedDate, setSelectedDate] = useState<Date>(today)
+  const [attendanceData, setAttendanceData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [attendanceTimeframe, setAttendanceTimeframe] = useState({
-    startTime: "06:00",
-    endTime: "09:00",
-  })
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
-  const [tempTimeframe, setTempTimeframe] = useState(attendanceTimeframe)
+  const [tempTimeframe, setTempTimeframe] = useState({ startTime: "06:00", endTime: "09:00" })
+  const [updatingTimeframe, setUpdatingTimeframe] = useState(false)
   const { toast } = useToast()
 
-  const filteredRecords = attendanceRecords.filter((record) => {
+  // Fetch attendance for selected date
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      setError(null)
+      try {
+        const dateStr = format(selectedDate, "yyyy-MM-dd")
+        const data = await getManagerAttendance(dateStr)
+        setAttendanceData(data)
+        if (data?.stats?.timeframe) {
+          setTempTimeframe(data.stats.timeframe)
+        }
+      } catch (err) {
+        setError("Failed to load attendance data.")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [selectedDate])
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return
+    // Prevent selecting future dates
+    const now = new Date()
+    if (date > now) {
+      toast({
+        title: "Invalid Date",
+        description: "Cannot select a future date.",
+        variant: "destructive",
+      })
+      return
+    }
+    setSelectedDate(date)
+  }
+
+  const handleUpdateTimeframe = async () => {
+    // Validate timeframe
+    if (tempTimeframe.startTime >= tempTimeframe.endTime) {
+      toast({
+        title: "Invalid Timeframe",
+        description: "Start time must be before end time.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUpdatingTimeframe(true)
+    try {
+      await updateManagerTimeframe(tempTimeframe)
+      setIsTimeframeDialogOpen(false)
+      toast({
+        title: "Timeframe Updated",
+        description: `Attendance window updated to ${tempTimeframe.startTime} - ${tempTimeframe.endTime}`,
+      })
+      // Refresh attendance data to get updated timeframe
+      const data = await getManagerAttendance()
+      setAttendanceData(data)
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update timeframe. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdatingTimeframe(false)
+    }
+  }
+
+  const handleTimeframeDialogOpen = (open: boolean) => {
+    setIsTimeframeDialogOpen(open)
+    if (open && attendanceData?.stats?.timeframe) {
+      setTempTimeframe(attendanceData.stats.timeframe)
+    }
+  }
+
+  const handleTimeframeChange = (field: 'startTime' | 'endTime', value: string) => {
+    setTempTimeframe(prev => ({ ...prev, [field]: value }))
+  }
+
+  if (loading) {
+    return <div className="p-8">Loading...</div>
+  }
+  if (error) {
+    return <div className="p-8 text-red-500">{error}</div>
+  }
+  if (!attendanceData) {
+    return <div className="p-8">No attendance data available.</div>
+  }
+
+  const stats = attendanceData.stats || {}
+  const records = attendanceData.records || []
+  const attendanceRate = stats.attendanceRate || 0
+  const presentCount = stats.presentCount || 0
+  const lateCount = stats.lateCount || 0
+  const absentCount = stats.absentCount || 0
+  const attendanceTimeframe = stats.timeframe || { startTime: "06:00", endTime: "09:00" }
+
+  const filteredRecords = records.filter((record) => {
     const matchesSearch =
       record.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.workId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -98,27 +156,6 @@ export default function AttendancePage() {
 
     return matchesSearch && matchesStatus
   })
-
-  const presentCount = attendanceRecords.filter((r) => r.status === "present").length
-  const lateCount = attendanceRecords.filter((r) => r.status === "late").length
-  const absentCount = attendanceRecords.filter((r) => r.status === "absent").length
-  const attendanceRate = Math.round(((presentCount + lateCount) / attendanceRecords.length) * 100)
-
-  const handleUpdateTimeframe = () => {
-    setAttendanceTimeframe(tempTimeframe)
-    setIsTimeframeDialogOpen(false)
-    toast({
-      title: "Timeframe Updated",
-      description: `Attendance window updated to ${tempTimeframe.startTime} - ${tempTimeframe.endTime}`,
-    })
-  }
-
-  const handleTimeframeDialogOpen = (open: boolean) => {
-    setIsTimeframeDialogOpen(open)
-    if (open) {
-      setTempTimeframe(attendanceTimeframe)
-    }
-  }
 
   return (
     <div className="flex flex-col">
@@ -227,7 +264,7 @@ export default function AttendancePage() {
                         id="startTime"
                         type="time"
                         value={tempTimeframe.startTime}
-                        onChange={(e) => setTempTimeframe((prev) => ({ ...prev, startTime: e.target.value }))}
+                        onChange={(e) => handleTimeframeChange('startTime', e.target.value)}
                         className="col-span-3"
                       />
                     </div>
@@ -239,7 +276,7 @@ export default function AttendancePage() {
                         id="endTime"
                         type="time"
                         value={tempTimeframe.endTime}
-                        onChange={(e) => setTempTimeframe((prev) => ({ ...prev, endTime: e.target.value }))}
+                        onChange={(e) => handleTimeframeChange('endTime', e.target.value)}
                         className="col-span-3"
                       />
                     </div>
@@ -255,8 +292,8 @@ export default function AttendancePage() {
                     <Button type="button" variant="outline" onClick={() => setIsTimeframeDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="button" onClick={handleUpdateTimeframe}>
-                      Update Timeframe
+                    <Button type="button" onClick={handleUpdateTimeframe} disabled={updatingTimeframe}>
+                      {updatingTimeframe ? "Updating..." : "Update Timeframe"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -276,8 +313,9 @@ export default function AttendancePage() {
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={setSelectedDate}
+                onSelect={handleDateSelect}
                 className="rounded-md border"
+                disabled={(date) => date > new Date()}
               />
             </CardContent>
           </Card>
@@ -356,44 +394,7 @@ export default function AttendancePage() {
           </Card>
         </div>
 
-        {/* Attendance Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Attendance Summary</CardTitle>
-            <CardDescription>Attendance patterns and trends</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Monday</span>
-                  <span className="font-medium">95%</span>
-                </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: "95%" }} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Tuesday</span>
-                  <span className="font-medium">88%</span>
-                </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: "88%" }} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Wednesday</span>
-                  <span className="font-medium">92%</span>
-                </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: "92%" }} />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   )

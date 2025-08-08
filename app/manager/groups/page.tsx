@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,327 +15,421 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { Plus, Users, Crown, TrendingUp, Target } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Plus, Users, Crown, X, Trash2, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface Group {
-  id: string
-  name: string
-  description: string
-  members: Agent[]
-  teamLeader?: Agent
-  performance: number
-  targetClients: number
-  collectedClients: number
-  createdAt: string
-}
-
-interface Agent {
-  id: string
-  name: string
-  workId: string
-  clientsCollected: number
-  attendanceRate: number
-}
+import { Group, Agent } from "@/lib/types"
+import {
+  getGroups,
+  createGroup,
+  deleteGroup,
+  assignAgentToGroup,
+  removeAgentFromGroup,
+  setTeamLeader,
+  getAgents,
+} from "@/lib/api"
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<Group[]>([
-    {
-      id: "1",
-      name: "Alpha Team",
-      description: "High-performance sales team for downtown sector",
-      members: [
-        { id: "1", name: "John Doe", workId: "AGT001", clientsCollected: 45, attendanceRate: 95 },
-        { id: "2", name: "Sarah Smith", workId: "AGT002", clientsCollected: 38, attendanceRate: 88 },
-        { id: "3", name: "Mike Wilson", workId: "AGT003", clientsCollected: 42, attendanceRate: 92 },
-      ],
-      teamLeader: { id: "1", name: "John Doe", workId: "AGT001", clientsCollected: 45, attendanceRate: 95 },
-      performance: 85,
-      targetClients: 150,
-      collectedClients: 125,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Beta Team",
-      description: "Specialized team for uptown sector",
-      members: [
-        { id: "4", name: "Lisa Brown", workId: "AGT004", clientsCollected: 35, attendanceRate: 90 },
-        { id: "5", name: "Tom Davis", workId: "AGT005", clientsCollected: 28, attendanceRate: 85 },
-      ],
-      teamLeader: { id: "4", name: "Lisa Brown", workId: "AGT004", clientsCollected: 35, attendanceRate: 90 },
-      performance: 72,
-      targetClients: 100,
-      collectedClients: 63,
-      createdAt: "2024-01-20",
-    },
-  ])
-
-  const [availableAgents] = useState<Agent[]>([
-    { id: "6", name: "Alex Johnson", workId: "AGT006", clientsCollected: 0, attendanceRate: 0 },
-    { id: "7", name: "Emma Wilson", workId: "AGT007", clientsCollected: 0, attendanceRate: 0 },
-  ])
-
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [newGroup, setNewGroup] = useState({
-    name: "",
-    description: "",
-    targetClients: "",
-  })
-
+  const [groups, setGroups] = useState<Group[]>([])
+  const [allAgents, setAllAgents] = useState<Agent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const handleCreateGroup = () => {
-    const group: Group = {
-      id: Date.now().toString(),
-      name: newGroup.name,
-      description: newGroup.description,
-      members: [],
-      performance: 0,
-      targetClients: Number.parseInt(newGroup.targetClients),
-      collectedClients: 0,
-      createdAt: new Date().toISOString().split("T")[0],
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false)
+  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false)
+  const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false)
+
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const [agentsToAdd, setAgentsToAdd] = useState<string[]>([])
+  const [newGroupName, setNewGroupName] = useState("")
+
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const [groupsData, agentsData] = await Promise.all([getGroups(), getAgents()])
+      setGroups(groupsData)
+      setAllAgents(agentsData)
+    } catch (err) {
+      setError("Failed to load data. Please try again.")
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
+  }, [])
 
-    setGroups([...groups, group])
-    setNewGroup({ name: "", description: "", targetClients: "" })
-    setIsCreateDialogOpen(false)
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-    toast({
-      title: "Group Created",
-      description: `${group.name} has been successfully created.`,
-    })
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) {
+      toast({ title: "Error", description: "Group name is required.", variant: "destructive" })
+      return
+    }
+    try {
+      const newGroup = await createGroup({ name: newGroupName })
+      setGroups((prev) => [...prev, newGroup])
+      setIsCreateDialogOpen(false)
+      setNewGroupName("")
+      toast({ title: "Success", description: "Group created successfully." })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create group.", variant: "destructive" })
+    }
   }
 
-  const handleAssignTeamLeader = (groupId: string, agentId: string) => {
-    setGroups(
-      groups.map((group) => {
-        if (group.id === groupId) {
-          const newLeader = group.members.find((member) => member.id === agentId)
-          return { ...group, teamLeader: newLeader }
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup) return
+    try {
+      // Ensure id is a number
+      let groupId = selectedGroup.id
+      if (typeof groupId === 'string') {
+        const match = groupId.match(/\d+/)
+        groupId = match ? Number(match[0]) : groupId
+      }
+      await deleteGroup(groupId)
+      setGroups((prev) => prev.filter((g) => {
+        let gid = g.id
+        if (typeof gid === 'string') {
+          const match = gid.match(/\d+/)
+          gid = match ? Number(match[0]) : gid
         }
-        return group
-      }),
-    )
-
-    toast({
-      title: "Team Leader Assigned",
-      description: "Team leader has been successfully assigned.",
-    })
+        return gid !== groupId
+      }))
+      setIsDeleteConfirmationOpen(false)
+      setSelectedGroup(null)
+      toast({ title: "Success", description: `Group '${selectedGroup.name}' deleted.` })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete group.", variant: "destructive" })
+    }
   }
 
-  return (
-    <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold">Group Management</h1>
-          <p className="text-sm text-muted-foreground">Create and manage agent groups</p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Group
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Group</DialogTitle>
-              <DialogDescription>Create a new group for your sales agents</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Group Name</Label>
-                <Input
-                  id="name"
-                  value={newGroup.name}
-                  onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
-                  placeholder="Alpha Team"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newGroup.description}
-                  onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
-                  placeholder="High-performance sales team"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="target">Target Clients (Monthly)</Label>
-                <Input
-                  id="target"
-                  type="number"
-                  value={newGroup.targetClients}
-                  onChange={(e) => setNewGroup({ ...newGroup, targetClients: e.target.value })}
-                  placeholder="100"
-                />
-              </div>
-              <Button onClick={handleCreateGroup} className="w-full">
-                Create Group
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </header>
+  const handleAssignTeamLeader = async (groupId: string | number, agentId: string | number) => {
+    try {
+      const updatedGroup = await setTeamLeader(groupId, agentId)
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? updatedGroup : g)))
+      toast({ title: "Success", description: "Team leader assigned successfully." })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to assign team leader.", variant: "destructive" })
+    }
+  }
 
-      <div className="flex-1 space-y-6 p-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{groups.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{groups.reduce((sum, group) => sum + group.members.length, 0)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Performance</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {groups.length > 0
-                  ? Math.round(groups.reduce((sum, group) => sum + group.performance, 0) / groups.length)
-                  : 0}
-                %
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Target Achievement</CardTitle>
-              <Target className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {groups.length > 0
-                  ? Math.round(
-                      (groups.reduce((sum, group) => sum + group.collectedClients, 0) /
-                        groups.reduce((sum, group) => sum + group.targetClients, 0)) *
-                        100,
-                    )
-                  : 0}
-                %
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+  const handleRemoveMember = async (groupId: string | number, agentId: string | number) => {
+    try {
+      const updatedGroup = await removeAgentFromGroup(groupId, agentId)
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? updatedGroup : g)))
+      setSelectedGroup(updatedGroup)
+      toast({ title: "Success", description: "Member removed successfully." })
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove member.", variant: "destructive" })
+    }
+  }
 
-        {/* Groups Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {groups.map((group) => (
-            <Card key={group.id}>
+  const handleAddMembers = async () => {
+    if (!selectedGroup || agentsToAdd.length === 0) return
+    try {
+      const groupId = selectedGroup.id
+      const updatedGroup = await assignAgentToGroup(groupId, agentsToAdd)
+      setGroups((prev) => prev.map((g) => (g.id === selectedGroup.id ? updatedGroup : g)))
+      setSelectedGroup(updatedGroup)
+      setIsAddMembersOpen(false)
+      setAgentsToAdd([])
+      if (updatedGroup.errors && updatedGroup.errors.length > 0) {
+        toast({
+          title: "Some agents could not be added:",
+          description: updatedGroup.errors.join("\n"),
+          variant: "destructive",
+        })
+      } else {
+        toast({ title: "Success", description: "Members added successfully." })
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add members.", variant: "destructive" })
+    }
+  }
+
+  const openDeleteConfirmation = (group: Group) => {
+    setSelectedGroup(group)
+    setIsDeleteConfirmationOpen(true)
+  }
+
+  const openViewDetails = (group: Group) => {
+    setSelectedGroup(group)
+    setIsViewDetailsOpen(true)
+  }
+
+  const openAddMembers = (group: Group) => {
+    setSelectedGroup(group)
+    setAgentsToAdd([])
+    setIsAddMembersOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{group.name}</CardTitle>
-                  <Badge variant="outline">{group.members.length} members</Badge>
-                </div>
-                <CardDescription>{group.description}</CardDescription>
+                <Skeleton className="h-6 w-2/3" />
+                <Skeleton className="h-4 w-full mt-1" />
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Performance Metrics */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Performance</span>
-                    <span className="font-medium">{group.performance}%</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: `${group.performance}%` }} />
-                  </div>
+                <Skeleton className="h-8 w-full" />
+                <div className="grid grid-cols-2 gap-4">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-full" />
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Target Progress</span>
-                    <span className="font-medium">
-                      {group.collectedClients}/{group.targetClients}
-                    </span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full"
-                      style={{ width: `${(group.collectedClients / group.targetClients) * 100}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Team Leader */}
-                {group.teamLeader ? (
-                  <div className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                    <Crown className="h-4 w-4 text-yellow-600" />
-                    <div className="text-sm">
-                      <div className="font-medium">{group.teamLeader.name}</div>
-                      <div className="text-muted-foreground">Team Leader</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-2 border-2 border-dashed rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">No team leader assigned</p>
-                    {group.members.length >= 2 && (
-                      <Select onValueChange={(value) => handleAssignTeamLeader(group.id, value)}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="Assign team leader" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {group.members.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.name} ({member.workId})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-
-                {/* Members List */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Members</h4>
-                  {group.members.length > 0 ? (
-                    <div className="space-y-1">
-                      {group.members.map((member) => (
-                        <div key={member.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
-                          <span>{member.name}</span>
-                          <Badge variant="outline">{member.workId}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No members assigned</p>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                    Add Members
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1 bg-transparent">
-                    View Details
-                  </Button>
-                </div>
+                <Separator />
+                <Skeleton className="h-4 w-1/4 mb-2" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <AlertTriangle className="h-16 w-16 text-destructive" />
+        <h2 className="text-xl font-semibold mt-4">An Error Occurred</h2>
+        <p className="text-muted-foreground mt-2">{error}</p>
+        <Button onClick={fetchData} className="mt-6">
+          Try Again
+        </Button>
+      </div>
+    )
+  }
+
+  // Compute all assigned agent IDs
+  const allAssignedAgentIds = groups.flatMap(g => Array.isArray(g.agents) ? g.agents.map(agent => agent.id) : []);
+  const unassignedSalesAgents = allAgents.filter(
+    agent =>
+      agent.type === "sales" &&
+      !allAssignedAgentIds.includes(agent.id)
+  );
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Groups Management</h2>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Create Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Group</DialogTitle>
+              <DialogDescription>Enter a name to create a new agent group.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Label htmlFor="name">Group Name</Label>
+              <Input
+                id="name"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="e.g., Alpha Team"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateGroup}>Create</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <Card key={group.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{group.name}</span>
+                <Badge variant={group.teamLeader ? "default" : "outline"}>
+                  {group.teamLeader ? "Leader Assigned" : "No Leader"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Team Leader</h4>
+                {group.teamLeader ? (
+                  <div className="flex items-center justify-between text-sm p-2 bg-secondary rounded">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-yellow-500" />
+                      <span>{
+                        [group.teamLeader.firstName, group.teamLeader.lastName]
+                          .filter(Boolean)
+                          .map(s => s.trim())
+                          .filter(Boolean)
+                          .join(' ') ||
+                        group.teamLeader.name ||
+                        group.teamLeader.workId ||
+                        group.teamLeader.email ||
+                        'No Name'
+                      }</span>
+                    </div>
+                    <Badge variant="secondary">{group.teamLeader.workId}</Badge>
+                  </div>
+                ) : (
+                  <Select onValueChange={(agentId) => handleAssignTeamLeader(group.id, agentId)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign a Team Leader" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {group.agents.map((member, idx) => {
+                        const displayName = [member.firstName, member.lastName]
+                          .filter(Boolean)
+                          .map(s => s.trim())
+                          .filter(Boolean)
+                          .join(' ');
+                        return (
+                          <SelectItem key={member.id || idx} value={member.id}>
+                            {displayName || member.workId || member.email || 'No Name'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span>{group.agents.length} Members</span>
+              </div>
+
+              <Separator />
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => openAddMembers(group)}>
+                  Add Members
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => openViewDetails(group)}>
+                  Manage Members
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => openDeleteConfirmation(group)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Manage Members Dialog */}
+      <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage Members: {selectedGroup?.name}</DialogTitle>
+            <DialogDescription>Review and remove members from the group.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {Array.isArray(selectedGroup?.agents) &&
+              selectedGroup.agents.map((member, idx) => {
+                const displayName =
+                  member.name ||
+                  [member.firstName, member.lastName]
+                    .filter(Boolean)
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .join(' ');
+                return (
+                  <div key={member.id || idx} className="flex items-center justify-between p-2 rounded-md bg-muted">
+                    <span>{displayName || member.workId || member.email || 'No Name'}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:text-red-600"
+                      onClick={() => handleRemoveMember(selectedGroup.id, member.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Members Dialog */}
+      <Dialog open={isAddMembersOpen} onOpenChange={setIsAddMembersOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Members to {selectedGroup?.name}</DialogTitle>
+            <DialogDescription>Select sales agents to add to this group.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {unassignedSalesAgents.map((agent, idx) => (
+              <div
+                key={agent.id || idx}
+                className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
+                  agentsToAdd.includes(agent.id) ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}
+                onClick={() =>
+                  setAgentsToAdd((prev) =>
+                    prev.includes(agent.id) ? prev.filter((id) => id !== agent.id) : [...prev, agent.id]
+                  )
+                }
+              >
+                <span>{
+                  (agent.firstName || agent.lastName)
+                    ? `${agent.firstName || ''} ${agent.lastName || ''}`.trim()
+                    : agent.name || agent.workId
+                }</span>
+                <Badge variant="outline">{agent.workId}</Badge>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setIsAddMembersOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddMembers}>Add Selected</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmationOpen} onOpenChange={setIsDeleteConfirmationOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the group
+              <strong> {selectedGroup?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setIsDeleteConfirmationOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteGroup}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

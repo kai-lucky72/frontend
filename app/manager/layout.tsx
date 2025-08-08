@@ -13,7 +13,9 @@ export default function ManagerLayout({
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar userRole="manager" />
-      <SidebarInset className="flex-1">{children}</SidebarInset>
+      <main className="flex-1 overflow-y-auto">
+        <SidebarInset>{children}</SidebarInset>
+      </main>
     </SidebarProvider>
   )
 }

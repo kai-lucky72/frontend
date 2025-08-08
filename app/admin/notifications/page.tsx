@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Send, Bell, Users, Clock, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getNotifications, sendNotification } from "@/lib/api"
 
 interface Notification {
   id: string
@@ -26,58 +27,57 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "System Maintenance",
-      message: "Scheduled maintenance on Sunday 2 AM - 4 AM",
-      recipient: "All Users",
-      status: "sent",
-      sentAt: "2024-01-15 10:30",
-      readBy: 45,
-      totalRecipients: 50,
-    },
-    {
-      id: "2",
-      title: "New Policy Update",
-      message: "Please review the updated company policies",
-      recipient: "All Managers",
-      status: "sent",
-      sentAt: "2024-01-14 14:20",
-      readBy: 8,
-      totalRecipients: 12,
-    },
-  ])
-
-  const [newNotification, setNewNotification] = useState({
-    title: "",
-    message: "",
-    recipient: "",
-    priority: "normal",
-  })
-
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [stats, setStats] = useState<any>({ totalSent: 0, thisWeek: 0, readRate: 0 })
+  const [pagination, setPagination] = useState<any>({ page: 1, limit: 10, total: 0 })
+  const [newNotification, setNewNotification] = useState({ title: "", message: "", recipient: "", priority: "normal" })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const handleSendNotification = () => {
-    const notification: Notification = {
-      id: Date.now().toString(),
-      title: newNotification.title,
-      message: newNotification.message,
-      recipient: newNotification.recipient,
-      status: "sent",
-      sentAt: new Date().toLocaleString(),
-      readBy: 0,
-      totalRecipients:
-        newNotification.recipient === "All Users" ? 50 : newNotification.recipient === "All Managers" ? 12 : 38,
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const data = await getNotifications({ page: pagination.page, limit: pagination.limit })
+        setNotifications(data.notifications || [])
+        setStats(data.stats || { totalSent: 0, thisWeek: 0, readRate: 0 })
+        setPagination(data.pagination || { page: 1, limit: 10, total: 0 })
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch notifications')
+      } finally {
+        setIsLoading(false)
+      }
     }
+    fetchNotifications()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, pagination.limit])
 
-    setNotifications([notification, ...notifications])
-    setNewNotification({ title: "", message: "", recipient: "", priority: "normal" })
-
-    toast({
-      title: "Notification Sent",
-      description: `Notification sent to ${notification.recipient}`,
-    })
+  const handleSendNotification = async () => {
+    setIsLoading(true)
+    setError(null)
+    // Get sender info from localStorage
+    const senderRole = localStorage.getItem("userRole") || "admin";
+    const senderWorkId = localStorage.getItem("workId") || "";
+    try {
+      const response = await sendNotification({
+        ...newNotification,
+        senderRole,
+        senderWorkId,
+      })
+      setNewNotification({ title: "", message: "", recipient: "", priority: "normal" })
+      toast({ title: "Notification Sent", description: `Notification sent to ${newNotification.recipient} by ${response.sender?.workId || senderWorkId}` })
+      // Refresh notifications
+      const data = await getNotifications({ page: pagination.page, limit: pagination.limit })
+      setNotifications(data.notifications || [])
+      setStats(data.stats || { totalSent: 0, thisWeek: 0, readRate: 0 })
+      setPagination(data.pagination || { page: 1, limit: 10, total: 0 })
+    } catch (err: any) {
+      setError(err.message || 'Failed to send notification')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -179,7 +179,7 @@ export default function NotificationsPage() {
                   <Bell className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{notifications.length}</div>
+                  <div className="text-2xl font-bold">{stats.totalSent}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -188,7 +188,7 @@ export default function NotificationsPage() {
                   <Clock className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">5</div>
+                  <div className="text-2xl font-bold">{stats.thisWeek}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -197,7 +197,7 @@ export default function NotificationsPage() {
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">89%</div>
+                  <div className="text-2xl font-bold">{stats.readRate}%</div>
                 </CardContent>
               </Card>
               <Card>
@@ -236,7 +236,9 @@ export default function NotificationsPage() {
                           {notification.status}
                         </Badge>
                         <div className="text-sm text-muted-foreground">
-                          {Math.round((notification.readBy / notification.totalRecipients) * 100)}% read
+                          {notification.totalRecipients > 0 
+                            ? Math.round((notification.readBy / notification.totalRecipients) * 100)
+                            : 0}% read
                         </div>
                       </div>
                     </div>

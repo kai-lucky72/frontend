@@ -1,12 +1,8 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -14,557 +10,372 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, MoreHorizontal, Edit, Trash2, Users, Crown, Phone, Mail } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface Agent {
-  id: string
-  name: string
-  email: string
-  workId: string
-  type: "sales" | "individual"
-  group?: string
-  isTeamLeader: boolean
-  status: "active" | "inactive"
-  clientsCollected: number
-  attendanceRate: number
-  createdAt: string
-}
-
-interface Group {
-  id: string
-  name: string
-  memberCount: number
-  teamLeader?: string
-}
+import { Agent } from "@/lib/types"
+import { CreateAgentForm } from "@/components/forms/create-agent-form"
+import { getAgents, createAgent, updateAgent, deleteAgent } from "@/lib/api"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Label } from "@/components/ui/label"
+import { DialogFooter } from "@/components/ui/dialog"
+import { AlertTriangle } from "lucide-react"
+import { Plus } from "lucide-react"
 
 export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@company.com",
-      workId: "AGT001",
-      type: "sales",
-      group: "Alpha Team",
-      isTeamLeader: true,
-      status: "active",
-      clientsCollected: 45,
-      attendanceRate: 95,
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Sarah Smith",
-      email: "sarah.smith@company.com",
-      workId: "AGT002",
-      type: "sales",
-      group: "Alpha Team",
-      isTeamLeader: false,
-      status: "active",
-      clientsCollected: 38,
-      attendanceRate: 88,
-      createdAt: "2024-01-16",
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      email: "mike.johnson@company.com",
-      workId: "AGT003",
-      type: "individual",
-      isTeamLeader: false,
-      status: "active",
-      clientsCollected: 52,
-      attendanceRate: 92,
-      createdAt: "2024-01-17",
-    },
-  ])
-
-  const [groups, setGroups] = useState<Group[]>([
-    { id: "1", name: "Alpha Team", memberCount: 2, teamLeader: "John Doe" },
-    { id: "2", name: "Beta Team", memberCount: 0 },
-    { id: "3", name: "Gamma Team", memberCount: 0 },
-  ])
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
-  const [newAgent, setNewAgent] = useState({
-    name: "",
-    email: "",
-    workId: "",
-    phone: "",
-    type: "sales" as "sales" | "individual",
-    group: "",
-  })
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [agentToDelete, setAgentToDelete] = useState<string | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
 
   const { toast } = useToast()
 
-  const handleCreateAgent = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!newAgent.name || !newAgent.email || !newAgent.workId) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      })
-      return
+  const fetchAgents = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const data = await getAgents()
+      setAgents(data)
+    } catch (err) {
+      setError("Failed to fetch agents. Please try again later.")
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
+  }, [])
 
-    if (newAgent.type === "sales" && !newAgent.group) {
-      toast({
-        title: "Group Required",
-        description: "Sales agents must be assigned to a group.",
-        variant: "destructive",
-      })
-      return
+  useEffect(() => {
+    fetchAgents()
+  }, [fetchAgents])
+
+  // Fix: Only update state and close dialog in handleCreateSuccess, do not call createAgent again
+  const handleCreateSuccess = (newAgent: Agent) => {
+      setAgents((prev) => [...prev, newAgent])
+      setIsCreateDialogOpen(false)
+      toast({ title: "Agent Created", description: `${newAgent.firstName} ${newAgent.lastName} has been added.` })
+  }
+
+  const handleUpdateSuccess = async (updatedAgent: Agent) => {
+    setAgents((prev) => prev.map((agent) => agent.id === updatedAgent.id ? updatedAgent : agent))
+      setIsEditDialogOpen(false)
+      setSelectedAgent(null)
+    toast({ title: "Agent Updated", description: `${updatedAgent.firstName} ${updatedAgent.lastName} has been updated.` })
+  }
+
+  const handleDeleteAgent = async () => {
+    if (!agentToDelete) return
+
+    try {
+      await deleteAgent(agentToDelete)
+      setAgents((prev) => prev.filter((agent) => agent.id !== agentToDelete))
+      setIsDeleteDialogOpen(false)
+      setAgentToDelete(null)
+      toast({ title: "Agent Deleted", description: "Agent has been removed from the system." })
+    } catch (error) {
+      toast({ title: "Deletion Failed", description: "Could not delete the agent. Please try again.", variant: "destructive" })
     }
+  }
 
-    const agent: Agent = {
-      id: Date.now().toString(),
-      name: newAgent.name,
-      email: newAgent.email,
-      workId: newAgent.workId,
-      type: newAgent.type,
-      group: newAgent.type === "sales" ? newAgent.group : undefined,
-      isTeamLeader: false,
-      status: "active",
-      clientsCollected: 0,
-      attendanceRate: 0,
-      createdAt: new Date().toISOString().split("T")[0],
-    }
-
-    setAgents([...agents, agent])
-    setNewAgent({ name: "", email: "", workId: "", phone: "", type: "sales", group: "" })
-    setIsCreateDialogOpen(false)
-
-    toast({
-      title: "Agent Created",
-      description: `${agent.name} has been successfully created.`,
-    })
+  const handleViewAgent = (agent: Agent) => {
+    setSelectedAgent(agent)
+    setIsViewDialogOpen(true)
   }
 
   const handleEditAgent = (agent: Agent) => {
-    setEditingAgent(agent)
-    setNewAgent({
-      name: agent.name,
-      email: agent.email,
-      workId: agent.workId,
-      phone: "",
-      type: agent.type,
-      group: agent.group || "",
-    })
+    setSelectedAgent(agent)
     setIsEditDialogOpen(true)
   }
 
-  const handleUpdateAgent = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!editingAgent) return
-
-    const updatedAgents = agents.map((agent) =>
-      agent.id === editingAgent.id
-        ? {
-            ...agent,
-            name: newAgent.name,
-            email: newAgent.email,
-            workId: newAgent.workId,
-            type: newAgent.type,
-            group: newAgent.type === "sales" ? newAgent.group : undefined,
-          }
-        : agent,
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Card className="w-full max-w-md p-6 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h2 className="mt-4 text-xl font-semibold">Loading Failed</h2>
+          <p className="mt-2 text-muted-foreground">{error}</p>
+          <Button onClick={fetchAgents} className="mt-6">Retry</Button>
+        </Card>
+      </div>
     )
-
-    setAgents(updatedAgents)
-    setIsEditDialogOpen(false)
-    setEditingAgent(null)
-    setNewAgent({ name: "", email: "", workId: "", phone: "", type: "sales", group: "" })
-
-    toast({
-      title: "Agent Updated",
-      description: `${newAgent.name} has been successfully updated.`,
-    })
-  }
-
-  const handleDeleteAgent = (agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId)
-    setAgents(agents.filter((a) => a.id !== agentId))
-
-    toast({
-      title: "Agent Deleted",
-      description: `${agent?.name} has been removed from the system.`,
-    })
-  }
-
-  const handleToggleTeamLeader = (agentId: string, groupName: string) => {
-    setAgents(
-      agents.map((agent) => {
-        if (agent.group === groupName) {
-          return { ...agent, isTeamLeader: agent.id === agentId }
-        }
-        return agent
-      }),
-    )
-
-    toast({
-      title: "Team Leader Updated",
-      description: "Team leader has been assigned successfully.",
-    })
-  }
-
-  const handleToggleStatus = (agentId: string) => {
-    const updatedAgents = agents.map((agent) =>
-      agent.id === agentId
-        ? { ...agent, status: agent.status === "active" ? "inactive" : ("active" as "active" | "inactive") }
-        : agent,
-    )
-    setAgents(updatedAgents)
-
-    const agent = agents.find((a) => a.id === agentId)
-    toast({
-      title: "Status Updated",
-      description: `${agent?.name} is now ${agent?.status === "active" ? "inactive" : "active"}.`,
-    })
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+    <div className="flex flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-2 sm:px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold">Agent Management</h1>
-          <p className="text-sm text-muted-foreground">Create and manage your agents</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold truncate">Manage Agents</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">Create, edit, and manage sales agents</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Create Agent
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Agent</DialogTitle>
-              <DialogDescription>Add a new agent to your team</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateAgent} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={newAgent.name}
-                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newAgent.email}
-                    onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
-                    placeholder="john.doe@company.com"
-                    className="pl-8"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="workId">Work ID *</Label>
-                <Input
-                  id="workId"
-                  value={newAgent.workId}
-                  onChange={(e) => setNewAgent({ ...newAgent, workId: e.target.value })}
-                  placeholder="AGT004"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    value={newAgent.phone}
-                    onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
-                    placeholder="+1 (555) 123-4567"
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Agent Type *</Label>
-                <Select
-                  value={newAgent.type}
-                  onValueChange={(value: "sales" | "individual") =>
-                    setNewAgent({ ...newAgent, type: value, group: value === "individual" ? "" : newAgent.group })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sales">Sales Agent (Group)</SelectItem>
-                    <SelectItem value="individual">Individual Agent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {newAgent.type === "sales" && (
-                <div className="space-y-2">
-                  <Label htmlFor="group">Group *</Label>
-                  <Select value={newAgent.group} onValueChange={(value) => setNewAgent({ ...newAgent, group: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.name}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="flex gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                  Create Agent
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm">
+          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Add Agent</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
       </header>
 
-      <div className="flex-1 space-y-6 p-4 md:p-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{agents.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sales Agents</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{agents.filter((a) => a.type === "sales").length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Individual Agents</CardTitle>
-              <Users className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{agents.filter((a) => a.type === "individual").length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Team Leaders</CardTitle>
-              <Crown className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{agents.filter((a) => a.isTeamLeader).length}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Agents Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Agents</CardTitle>
-            <CardDescription>Manage your agents and assign team leaders</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Agent</TableHead>
-                    <TableHead className="hidden sm:table-cell">Work ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="hidden md:table-cell">Group</TableHead>
-                    <TableHead className="hidden lg:table-cell">Clients</TableHead>
-                    <TableHead className="hidden lg:table-cell">Attendance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agents.map((agent) => (
+      <div className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-sm text-muted-foreground">Loading agents...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-4" />
+              <p className="text-sm text-destructive mb-4">{error}</p>
+              <Button onClick={fetchAgents} variant="outline" size="sm">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Work ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {agents.map((agent) => (
                     <TableRow key={agent.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{agent.name}</div>
-                            <div className="text-sm text-muted-foreground truncate sm:hidden">{agent.workId}</div>
-                            <div className="text-sm text-muted-foreground truncate">{agent.email}</div>
-                          </div>
-                          {agent.isTeamLeader && <Crown className="h-4 w-4 text-yellow-600 flex-shrink-0" />}
+                      <div>
+                        <div className="font-medium text-xs sm:text-sm flex items-center gap-1">
+                          {agent.firstName} {agent.lastName}
+                          {agent.teamLeader && (
+                            <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                              TL
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{agent.email}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">{agent.workId}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={agent.type === "sales" ? "default" : "secondary"} className="text-xs capitalize">
+                        {agent.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {agent.type === "sales" 
+                        ? (agent.group || "No Group") 
+                        : "None"
+                      }
+                      </TableCell>
+                      <TableCell>
+                      <Badge variant={agent.status === "active" ? "default" : "destructive"} className="text-xs">
+                        {agent.status}
+                      </Badge>
+                      </TableCell>
+                      <TableCell>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAgent(agent)
+                            setIsViewDialogOpen(true)
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        >
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAgent(agent)
+                            setIsEditDialogOpen(true)
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        >
+                          <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setAgentToDelete(agent.id)
+                            setIsDeleteDialogOpen(true)
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline">{agent.workId}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={agent.type === "sales" ? "default" : "secondary"}>{agent.type}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">{agent.group || "Individual"}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{agent.clientsCollected}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{agent.attendanceRate}%</TableCell>
-                      <TableCell>
-                        <Badge variant={agent.status === "active" ? "default" : "destructive"}>{agent.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditAgent(agent)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Agent
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleStatus(agent.id)}>
-                              <Users className="mr-2 h-4 w-4" />
-                              {agent.status === "active" ? "Deactivate" : "Activate"}
-                            </DropdownMenuItem>
-                            {agent.type === "sales" && agent.group && (
-                              <DropdownMenuItem onClick={() => handleToggleTeamLeader(agent.id, agent.group!)}>
-                                <Crown className="mr-2 h-4 w-4" />
-                                {agent.isTeamLeader ? "Remove Team Leader" : "Make Team Leader"}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteAgent(agent.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Agent
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
+
+      {/* Create Agent Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Agent</DialogTitle>
+            <DialogDescription>Add a new sales agent to your team.</DialogDescription>
+          </DialogHeader>
+          <CreateAgentForm onSuccess={handleCreateSuccess} />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Agent Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Agent</DialogTitle>
-            <DialogDescription>Update agent information</DialogDescription>
+            <DialogDescription>Update agent information.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateAgent} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Full Name *</Label>
-              <Input
-                id="edit-name"
-                value={newAgent.name}
-                onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                placeholder="John Doe"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email *</Label>
-              <div className="relative">
-                <Mail className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={newAgent.email}
-                  onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
-                  placeholder="john.doe@company.com"
-                  className="pl-8"
-                  required
-                />
+          {selectedAgent && (
+            <CreateAgentForm 
+              agent={selectedAgent} 
+              onSuccess={handleUpdateSuccess} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Agent Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Agent Details</DialogTitle>
+            <DialogDescription>View agent information and performance.</DialogDescription>
+          </DialogHeader>
+          {selectedAgent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Name</Label>
+                  <p className="text-sm">{selectedAgent.firstName} {selectedAgent.lastName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Work ID</Label>
+                  <p className="text-sm">{selectedAgent.workId}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <p className="text-sm">{selectedAgent.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Phone</Label>
+                  <p className="text-sm">{selectedAgent.phoneNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Type</Label>
+                  <Badge variant={selectedAgent.type === "sales" ? "default" : "secondary"} className="text-xs capitalize">
+                    {selectedAgent.type}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Badge variant={selectedAgent.status === "active" ? "default" : "destructive"} className="text-xs">
+                    {selectedAgent.status}
+                  </Badge>
+                </div>
+                {selectedAgent.type === "sales" && (
+                  <>
+                    <div>
+                      <Label className="text-sm font-medium">Group</Label>
+                      <p className="text-sm">{selectedAgent.group || "No Group"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Team Leader</Label>
+                      <p className="text-sm">{selectedAgent.teamLeader ? "Yes" : "No"}</p>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <Label className="text-sm font-medium">Clients Collected</Label>
+                  <p className="text-sm">{selectedAgent.clientsCollected}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Attendance Rate</Label>
+                  <p className="text-sm">{selectedAgent.attendanceRate}%</p>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-workId">Work ID *</Label>
-              <Input
-                id="edit-workId"
-                value={newAgent.workId}
-                onChange={(e) => setNewAgent({ ...newAgent, workId: e.target.value })}
-                placeholder="AGT004"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-type">Agent Type *</Label>
-              <Select
-                value={newAgent.type}
-                onValueChange={(value: "sales" | "individual") =>
-                  setNewAgent({ ...newAgent, type: value, group: value === "individual" ? "" : newAgent.group })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sales">Sales Agent (Group)</SelectItem>
-                  <SelectItem value="individual">Individual Agent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {newAgent.type === "sales" && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-group">Group *</Label>
-                <Select value={newAgent.group} onValueChange={(value) => setNewAgent({ ...newAgent, group: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.name}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                Update Agent
-              </Button>
-            </div>
-          </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Delete Agent</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this agent? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="h-10 sm:h-9">
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAgent}
+              className="h-10 sm:h-9"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function TableSkeleton({ rows }: { rows: number }) {
+  return (
+    <>
+      {[...Array(rows)].map((_, i) => (
+        <TableRow key={i}>
+          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+          <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+          <TableCell><Skeleton className="h-5 w-8" /></TableCell>
+          <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+        </TableRow>
+      ))}
+    </>
   )
 }

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['use-client'],
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,6 +9,14 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:5238/api/:path*",
+      },
+    ];
   },
 }
 

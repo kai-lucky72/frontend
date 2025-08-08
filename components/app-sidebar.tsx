@@ -1,6 +1,6 @@
 "use client"
 
-import type * as React from "react"
+import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Building2,
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   userRole: string
@@ -80,6 +81,23 @@ const salesAgentNavItems = [
 export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [userInfo, setUserInfo] = useState({
+    email: "",
+    workId: "",
+    agentType: "individual",
+    groupName: "",
+  })
+  const [isClient, setIsClient] = useState(false)
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    setIsClient(true)
+    const email = localStorage.getItem("userEmail") || "user@company.com"
+    const workId = localStorage.getItem("workId") || "EMP001"
+    const agentType = localStorage.getItem("agentType") || "individual"
+    const groupName = localStorage.getItem("groupName") || ""
+    setUserInfo({ email, workId, agentType, groupName })
+  }, [])
 
   const getNavItems = () => {
     switch (userRole) {
@@ -88,9 +106,7 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
       case "manager":
         return managerNavItems
       case "agent":
-        // Check agent type from localStorage
-        const agentType = localStorage.getItem("agentType") || "individual"
-        return agentType === "sales" ? salesAgentNavItems : individualAgentNavItems
+        return userInfo.agentType === "sales" ? salesAgentNavItems : individualAgentNavItems
       default:
         return []
     }
@@ -101,82 +117,87 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
     router.push("/")
   }
 
-  const getUserInfo = () => {
-    const email = localStorage.getItem("userEmail") || "user@company.com"
-    const workId = localStorage.getItem("workId") || "EMP001"
-    const agentType = localStorage.getItem("agentType") || "individual"
-    const groupName = localStorage.getItem("groupName") || ""
-    return { email, workId, agentType, groupName }
-  }
 
-  const { email, workId, agentType, groupName } = getUserInfo()
 
   const getPortalTitle = () => {
     if (userRole === "agent") {
-      return agentType === "sales" ? `Sales Agent${groupName ? ` - ${groupName}` : ""}` : "Individual Agent"
+      return userInfo.agentType === "sales"
+        ? `Sales Agent${userInfo.groupName ? ` - ${userInfo.groupName}` : ""}`
+        : "Individual Agent"
     }
     return `${userRole.charAt(0).toUpperCase() + userRole.slice(1)}`
   }
 
   return (
-    <Sidebar variant="sidebar" collapsible="offcanvas" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-between px-3 py-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
-            <div className="min-w-0">
-              <h2 className="text-sm sm:text-lg font-semibold truncate">Prime Management</h2>
-              <p className="text-xs text-muted-foreground truncate">{getPortalTitle()}</p>
-            </div>
-          </div>
-          <SidebarTrigger className="h-8 w-8 p-0 flex-shrink-0">
-            <X className="h-4 w-4" />
-          </SidebarTrigger>
+    <>
+      {isMobile && (
+        <div className="fixed top-4 left-4 z-50 md:hidden">
+          <SidebarTrigger className="h-10 w-10 p-0 flex-shrink-0" />
         </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-xs font-medium">Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {getNavItems().map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} className="h-12 px-3">
-                    <a href={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      <span className="text-sm font-medium">{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className="border-t border-sidebar-border">
-        <div className="p-3 space-y-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarImage src="/placeholder.svg?height=40&width=40" />
-              <AvatarFallback className="text-sm">{email.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{email}</p>
-              <p className="text-xs text-muted-foreground">{workId}</p>
-              {userRole === "agent" && agentType === "sales" && groupName && (
-                <p className="text-xs text-blue-600 truncate">{groupName}</p>
-              )}
+      )}
+      <Sidebar variant="sidebar" collapsible="offcanvas" {...props}>
+        <SidebarHeader className="border-b border-sidebar-border">
+          <div className="flex items-center justify-between px-3 py-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-lg font-semibold truncate">Prime Management</h2>
+                {isClient && <p className="text-xs text-muted-foreground truncate">{getPortalTitle()}</p>}
+              </div>
             </div>
+            {!isMobile && (
+              <SidebarTrigger className="h-8 w-8 p-0 flex-shrink-0">
+                <X className="h-4 w-4" />
+              </SidebarTrigger>
+            )}
           </div>
-          <Button variant="outline" size="sm" className="w-full h-10 bg-transparent text-sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel className="px-3 text-xs font-medium">Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {getNavItems().map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={pathname === item.url} className="h-12 px-3">
+                      <a href={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="text-sm font-medium">{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t border-sidebar-border">
+          <div className="p-3 space-y-3">
+            {isClient && (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage src="/placeholder.svg?height=40&width=40" />
+                  <AvatarFallback className="text-sm">{userInfo.email.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{userInfo.email}</p>
+                  <p className="text-xs text-muted-foreground">{userInfo.workId}</p>
+                  {userRole === "agent" && userInfo.agentType === "sales" && userInfo.groupName && (
+                    <p className="text-xs text-blue-600 truncate">{userInfo.groupName}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            <Button variant="outline" size="sm" className="w-full h-10 bg-transparent text-sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    </>
   )
 }

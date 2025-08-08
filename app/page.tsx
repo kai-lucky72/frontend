@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Building2, Mail, User, BadgeIcon as IdCard } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { login } from "@/lib/api"
+import { UserRole } from "@/lib/types"
+import { useLoginError } from "@/hooks/use-api-error"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -18,39 +21,48 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { handleError } = useLoginError()
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    // Simulate authentication with just email and work ID
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Call the backend-driven login function
+      const { user, token } = await login(email, workId, role as UserRole);
 
-    // Store user data in localStorage
-    localStorage.setItem("userEmail", email)
-    localStorage.setItem("userRole", role)
-    localStorage.setItem("workId", workId)
+      // Clear previous session data and store new data from backend response
+      const fullName = `${user.firstName} ${user.lastName}`;
+      localStorage.clear();
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userId", user.id);
+      localStorage.setItem("userName", fullName);
+      localStorage.setItem("userEmail", user.email);
+      localStorage.setItem("userRole", user.role);
+      localStorage.setItem("workId", user.workId);
 
-    // For agents, determine if they are individual or sales agent based on email
-    if (role === "agent") {
-      const agentType = email.includes("sales") || email.includes("team") ? "sales" : "individual"
-      const groupName = agentType === "sales" ? getGroupName(email) : ""
-
-      localStorage.setItem("agentType", agentType)
-      if (groupName) {
-        localStorage.setItem("groupName", groupName)
+      // The backend determines agentType and groupName
+      if (user.agentType) {
+        localStorage.setItem("agentType", user.agentType);
       }
+      if (user.groupName) {
+        localStorage.setItem("groupName", user.groupName);
+      }
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${fullName}! Redirecting...`,
+      });
+
+      // Redirect based on the role provided by the backend
+      router.push(`/${user.role}`);
+
+    } catch (error: any) {
+      handleError(error, "Login");
+    } finally {
+      setIsLoading(false);
     }
-
-    toast({
-      title: "Login Successful",
-      description: `Welcome back! Redirecting to your ${role} dashboard.`,
-    })
-
-    // Redirect based on role
-    router.push(`/${role}`)
-    setIsLoading(false)
-  }
+  };
 
   const getGroupName = (email: string) => {
     // Simulate group assignment based on email
@@ -67,7 +79,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-center mb-4">
             <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
           </div>
-          <CardTitle className="text-xl sm:text-2xl font-bold">Prime Management</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl font-bold">Prime Agent Management</CardTitle>
           <CardDescription className="text-sm">Sign in with your Work ID and Email</CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
@@ -111,7 +123,7 @@ export default function LoginPage() {
                 Role
               </Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Select value={role} onValueChange={setRole} required>
                   <SelectTrigger className="pl-10 h-12 text-base">
                     <SelectValue placeholder="Select your role" />

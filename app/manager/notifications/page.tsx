@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Send, Bell, Users, MessageSquare, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getManagerNotifications, sendManagerNotification } from "@/lib/api"
 
 interface Agent {
   id: string
@@ -42,28 +43,9 @@ export default function NotificationsPage() {
     { id: "4", name: "Lisa Brown", workId: "AGT004", group: "Beta Team", email: "lisa.brown@company.com" },
   ])
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "Weekly Target Update",
-      message: "New weekly targets have been assigned. Please check your dashboard.",
-      recipients: ["All Agents"],
-      sentAt: "2024-01-15 10:30",
-      readBy: 3,
-      totalRecipients: 4,
-      priority: "normal",
-    },
-    {
-      id: "2",
-      title: "Team Meeting Tomorrow",
-      message: "Mandatory team meeting at 9 AM in the conference room.",
-      recipients: ["Alpha Team"],
-      sentAt: "2024-01-14 16:45",
-      readBy: 2,
-      totalRecipients: 2,
-      priority: "high",
-    },
-  ])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [newNotification, setNewNotification] = useState({
     title: "",
@@ -76,47 +58,66 @@ export default function NotificationsPage() {
 
   const { toast } = useToast()
 
-  const handleSendNotification = () => {
-    let recipients: string[] = []
-    let totalRecipients = 0
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      setError(null)
+      try {
+        const data = await getManagerNotifications()
+        setNotifications(data?.notifications || data || [])
+      } catch (err) {
+        setError("Failed to load notifications.")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
-    if (newNotification.recipientType === "all") {
-      recipients = ["All Agents"]
-      totalRecipients = agents.length
-    } else if (newNotification.recipientType === "group") {
-      recipients = [newNotification.selectedGroup]
-      totalRecipients = agents.filter((agent) => agent.group === newNotification.selectedGroup).length
-    } else {
-      recipients = newNotification.selectedAgents
-      totalRecipients = newNotification.selectedAgents.length
+  const handleSendNotification = async () => {
+    let recipient = "All Agents";
+    if (newNotification.recipientType === "group") {
+      recipient = newNotification.selectedGroup;
+    } else if (newNotification.recipientType === "individual") {
+      recipient = newNotification.selectedAgents.join(",");
     }
 
-    const notification: Notification = {
-      id: Date.now().toString(),
-      title: newNotification.title,
-      message: newNotification.message,
-      recipients,
-      sentAt: new Date().toLocaleString(),
-      readBy: 0,
-      totalRecipients,
-      priority: newNotification.priority,
+    // Get sender info from localStorage
+    const senderRole = localStorage.getItem("userRole") || "manager";
+    const senderWorkId = localStorage.getItem("workId") || "";
+
+    try {
+      const response = await sendManagerNotification({
+        title: newNotification.title,
+        message: newNotification.message,
+        recipient,
+        priority: newNotification.priority,
+        senderRole,
+        senderWorkId,
+      });
+      toast({
+        title: "Notification Sent",
+        description: `Notification sent to ${recipient} by ${response.sender?.workId || senderWorkId}`,
+      });
+      setNewNotification({
+        title: "",
+        message: "",
+        priority: "normal",
+        recipientType: "all",
+        selectedGroup: "",
+        selectedAgents: [],
+      });
+      // Refresh notifications from backend
+      const data = await getManagerNotifications();
+      setNotifications(data?.notifications || data || []);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.userFriendly || err?.message || "Failed to send notification.",
+        variant: "destructive",
+      });
     }
-
-    setNotifications([notification, ...notifications])
-    setNewNotification({
-      title: "",
-      message: "",
-      priority: "normal",
-      recipientType: "all",
-      selectedGroup: "",
-      selectedAgents: [],
-    })
-
-    toast({
-      title: "Notification Sent",
-      description: `Notification sent to ${recipients.join(", ")}`,
-    })
-  }
+  };
 
   const handleAgentSelection = (agentId: string, checked: boolean) => {
     if (checked) {
@@ -133,6 +134,14 @@ export default function NotificationsPage() {
   }
 
   const groups = [...new Set(agents.map((agent) => agent.group))]
+
+  if (loading) {
+    return <div className="text-center py-8">Loading notifications...</div>
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-500">{error}</div>
+  }
 
   return (
     <div className="flex flex-col">
@@ -314,39 +323,49 @@ export default function NotificationsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {notifications.map((notification) => (
-                    <div key={notification.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{notification.title}</h4>
-                          <Badge
-                            variant={
-                              notification.priority === "urgent"
-                                ? "destructive"
-                                : notification.priority === "high"
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No notifications found. Send a new one!</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div key={notification.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{notification.title}</h4>
+                            <Badge
+                              variant={
+                                notification.priority === "urgent"
                                   ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {notification.priority}
-                          </Badge>
+                                  : notification.priority === "high"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                            >
+                              {notification.priority}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{notification.message}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>To: {
+                              Array.isArray(notification.recipients)
+                                ? notification.recipients.join(", ")
+                                : (notification.recipient || "-")
+                            }</span>
+                            <span>Sent: {notification.sentAt}</span>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">{notification.message}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>To: {notification.recipients.join(", ")}</span>
-                          <span>Sent: {notification.sentAt}</span>
+                        <div className="text-right space-y-2">
+                          <div className="text-sm font-medium">
+                            {notification.readBy}/{notification.totalRecipients} read
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {notification.totalRecipients > 0 
+                              ? Math.round((notification.readBy / notification.totalRecipients) * 100)
+                              : 0}% read rate
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right space-y-2">
-                        <div className="text-sm font-medium">
-                          {notification.readBy}/{notification.totalRecipients} read
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {Math.round((notification.readBy / notification.totalRecipients) * 100)}% read rate
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

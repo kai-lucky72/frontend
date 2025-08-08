@@ -1,76 +1,150 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Users, Target, Clock, TrendingUp, UserPlus, Group, MapPin } from "lucide-react"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Users, Target, Clock, TrendingUp, UserPlus, Group, MapPin, AlertCircle } from "lucide-react"
+import { ChartTooltipContent } from "@/components/ui/chart"
+import { Tooltip, Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { getManagerDashboardData, patchManagerDashboardTimeframe } from "@/lib/api"
+import { ManagerDashboardData } from "@/lib/types"
 
-const performanceData = [
-  { name: "Mon", individual: 12, group: 18 },
-  { name: "Tue", individual: 15, group: 22 },
-  { name: "Wed", individual: 8, group: 16 },
-  { name: "Thu", individual: 20, group: 25 },
-  { name: "Fri", individual: 18, group: 28 },
-  { name: "Sat", individual: 14, group: 20 },
-  { name: "Sun", individual: 10, group: 15 },
-]
-
-const groupPerformance = [
-  { name: "Alpha Team", value: 85, color: "#8884d8" },
-  { name: "Beta Team", value: 72, color: "#82ca9d" },
-  { name: "Gamma Team", value: 91, color: "#ffc658" },
-  { name: "Delta Team", value: 68, color: "#ff7c7c" },
-]
-
-const agentStats = [
-  { name: "Total Agents", value: 24, change: "+3", icon: Users },
-  { name: "Active Today", value: 18, change: "+2", icon: Clock },
-  { name: "Clients Collected", value: 156, change: "+12", icon: Target },
-  { name: "Groups", value: 4, change: "0", icon: Group },
-]
+const PIE_CHART_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff7c7c", "#a4de6c", "#d0ed57", "#ffc0cb"];
 
 export default function ManagerDashboard() {
-  const [attendanceTimeframe, setAttendanceTimeframe] = useState({
-    startTime: "06:00",
-    endTime: "09:00",
-  })
-  const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
-  const [tempTimeframe, setTempTimeframe] = useState(attendanceTimeframe)
+  const router = useRouter()
   const { toast } = useToast()
 
-  const handleUpdateTimeframe = () => {
-    setAttendanceTimeframe(tempTimeframe)
-    setIsTimeframeDialogOpen(false)
-    toast({
-      title: "Timeframe Updated",
-      description: `Attendance window updated to ${tempTimeframe.startTime} - ${tempTimeframe.endTime}`,
-    })
-  }
+  const [dashboardData, setDashboardData] = useState<ManagerDashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isMock, setIsMock] = useState(false)
 
-  const handleTimeframeDialogOpen = (open: boolean) => {
-    setIsTimeframeDialogOpen(open)
-    if (open) {
-      setTempTimeframe(attendanceTimeframe)
+  const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
+  const [tempTimeframe, setTempTimeframe] = useState({ startTime: "", endTime: "" })
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const data = await getManagerDashboardData()
+      setDashboardData(data)
+      setTempTimeframe(data.attendance.timeframe)
+      setIsMock(false)
+    } catch (err) {
+      setError("Failed to load dashboard data. Please try again later.")
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const handleUpdateTimeframe = async () => {
+    try {
+      const updatedTimeframe = await patchManagerDashboardTimeframe({
+        startTime: tempTimeframe.startTime,
+        endTime: tempTimeframe.endTime,
+      })
+      setDashboardData(prevData => prevData ? { ...prevData, attendance: { ...prevData.attendance, timeframe: updatedTimeframe } } : null)
+      setIsTimeframeDialogOpen(false)
+      toast({
+        title: "Timeframe Updated",
+        description: `Attendance window updated to ${updatedTimeframe.startTime} - ${updatedTimeframe.endTime}`,
+      })
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Could not update the attendance timeframe. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleAddMockData = () => {
+    setDashboardData(mockDashboardData)
+    setIsMock(true)
+  }
+  const handleRemoveMockData = () => {
+    fetchDashboardData()
+    setIsMock(false)
+  }
+
+  // Mock data fallback
+  const mockDashboardData = {
+    stats: {
+      totalAgents: 12,
+      activeToday: 8,
+      clientsCollected: 320,
+      groupsCount: 3,
+    },
+    recentActivities: [
+      { id: 1, agentName: "John Doe", action: "Collected 5 clients", location: "Downtown", status: "success", timestamp: "2024-07-10 09:00" },
+      { id: 2, agentName: "Sarah Smith", action: "Marked attendance late", location: "Uptown", status: "warning", timestamp: "2024-07-10 09:15" },
+    ],
+    attendance: {
+      rate: 85,
+      presentCount: 8,
+      absentCount: 4,
+      presentAgents: [
+        { name: "John Doe", time: "08:30" },
+        { name: "Sarah Smith", time: "08:45" },
+      ],
+      timeframe: { startTime: "09:00", endTime: "10:00" },
+    },
+    groupPerformance: [
+      { name: "Alpha Team", clients: 120 },
+      { name: "Beta Team", clients: 100 },
+      { name: "Gamma Team", clients: 100 },
+    ],
+    individualPerformance: [
+      { name: "John Doe", clients: 120 },
+      { name: "Sarah Smith", clients: 100 },
+      { name: "Mike Johnson", clients: 100 },
+    ],
+  }
+  const dataToUse = dashboardData && dashboardData.stats ? dashboardData : mockDashboardData;
+
+  if (isLoading) {
+    return <DashboardSkeleton />
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Card className="w-full max-w-md p-6 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+          <h2 className="mt-4 text-xl font-semibold">Loading Failed</h2>
+          <p className="mt-2 text-muted-foreground">{error}</p>
+          <Button onClick={fetchDashboardData} className="mt-6">Retry</Button>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!dashboardData) {
+    return null // Or some other placeholder for no data
+  }
+
+  const statsCards = [
+    { name: "Total Agents", value: dataToUse.stats.totalAgents, icon: Users },
+    { name: "Active Today", value: dataToUse.stats.activeToday, icon: Clock },
+    { name: "Clients Collected", value: dataToUse.stats.clientsCollected, icon: Target },
+    { name: "Groups", value: dataToUse.stats.groupsCount, icon: Group },
+  ]
 
   return (
     <div className="flex flex-col">
@@ -82,91 +156,40 @@ export default function ManagerDashboard() {
           <p className="text-sm text-muted-foreground">Manage your agents and monitor performance</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm">
+          {isMock ? (
+            <Button variant="destructive" size="sm" onClick={handleRemoveMockData}>
+              Remove Mock Data
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleAddMockData}>
+              Add Mock Data
+            </Button>
+          )}
+          <Button size="sm" onClick={() => router.push("/manager/agents")}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Agent
           </Button>
         </div>
       </header>
 
-      <div className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {agentStats.map((stat) => (
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+          {statsCards.map((stat) => (
             <Card key={stat.name}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.name}</CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-xs sm:text-sm font-medium">{stat.name}</CardTitle>
+                <stat.icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                  {stat.change} from yesterday
-                </div>
+                <div className="text-lg sm:text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">Live data overview</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Performance Chart */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Weekly Performance</CardTitle>
-              <CardDescription>Individual vs Group agent performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  individual: {
-                    label: "Individual Agents",
-                    color: "hsl(var(--chart-1))",
-                  },
-                  group: {
-                    label: "Group Agents",
-                    color: "hsl(var(--chart-2))",
-                  },
-                }}
-                className="h-[300px]"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="individual" fill="var(--color-individual)" name="Individual" />
-                    <Bar dataKey="group" fill="var(--color-group)" name="Group" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* Group Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Group Performance</CardTitle>
-              <CardDescription>Team efficiency ratings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {groupPerformance.map((group) => (
-                  <div key={group.name} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{group.name}</span>
-                      <span className="font-medium">{group.value}%</span>
-                    </div>
-                    <Progress value={group.value} className="h-2" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Recent Activities */}
           <Card>
             <CardHeader>
@@ -174,61 +197,29 @@ export default function ManagerDashboard() {
               <CardDescription>Latest updates from your team</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  {
-                    agent: "John Doe",
-                    action: "Marked attendance",
-                    location: "Downtown",
-                    time: "8:30 AM",
-                    status: "success",
-                  },
-                  {
-                    agent: "Sarah Smith",
-                    action: "Collected 3 clients",
-                    location: "Uptown",
-                    time: "9:15 AM",
-                    status: "success",
-                  },
-                  {
-                    agent: "Mike Johnson",
-                    action: "Late attendance",
-                    location: "Midtown",
-                    time: "9:45 AM",
-                    status: "warning",
-                  },
-                  {
-                    agent: "Lisa Brown",
-                    action: "Collected 5 clients",
-                    location: "Eastside",
-                    time: "10:20 AM",
-                    status: "success",
-                  },
-                  {
-                    agent: "Tom Wilson",
-                    action: "Marked attendance",
-                    location: "Westside",
-                    time: "8:15 AM",
-                    status: "success",
-                  },
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{activity.agent}</p>
-                      <p className="text-xs text-muted-foreground">{activity.action}</p>
-                      <div className="flex items-center text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {activity.location}
+              <div className="space-y-3 sm:space-y-4">
+                {dataToUse.recentActivities.length > 0 ? (
+                  dataToUse.recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border gap-2">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{activity.agentName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{activity.action}</p>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{activity.location}</span>
+                        </div>
+                      </div>
+                      <div className="text-right sm:text-left sm:ml-4">
+                        <Badge variant={activity.status === "success" ? "default" : activity.status === 'warning' ? 'secondary' : "destructive"} className="mb-1 text-xs">
+                          {activity.status}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant={activity.status === "success" ? "default" : "destructive"} className="mb-1">
-                        {activity.status}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No recent activities.</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -237,90 +228,196 @@ export default function ManagerDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Today's Attendance</CardTitle>
-              <CardDescription>Current attendance status</CardDescription>
+              <CardDescription>Current attendance status and list of present agents</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Attendance Rate</span>
-                  <span className="text-2xl font-bold text-green-600">75%</span>
+                  <span className="text-xl sm:text-2xl font-bold text-green-600">{dataToUse.attendance.rate.toFixed(0)}%</span>
                 </div>
-                <Progress value={75} className="h-3" />
+                <Progress value={dataToUse.attendance.rate} className="h-3" />
 
-                <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4">
                   <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950">
-                    <div className="text-2xl font-bold text-green-600">18</div>
+                    <div className="text-xl sm:text-2xl font-bold text-green-600">{dataToUse.attendance.presentCount}</div>
                     <div className="text-xs text-muted-foreground">Present</div>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950">
-                    <div className="text-2xl font-bold text-red-600">6</div>
+                    <div className="text-xl sm:text-2xl font-bold text-red-600">{dataToUse.attendance.absentCount}</div>
                     <div className="text-xs text-muted-foreground">Absent</div>
                   </div>
                 </div>
 
-                <div className="pt-4 space-y-2">
-                  <h4 className="text-sm font-medium">Attendance Timeframe</h4>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Current Window:</span>
-                    <Badge variant="outline">
-                      {attendanceTimeframe.startTime} - {attendanceTimeframe.endTime}
-                    </Badge>
-                  </div>
+                <Separator />
 
-                  <Dialog open={isTimeframeDialogOpen} onOpenChange={handleTimeframeDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full bg-transparent">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Update Timeframe
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Update Attendance Timeframe</DialogTitle>
-                        <DialogDescription>Set the time window for agent attendance tracking.</DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="startTime" className="text-right">
-                            Start Time
-                          </Label>
-                          <Input
-                            id="startTime"
-                            type="time"
-                            value={tempTimeframe.startTime}
-                            onChange={(e) => setTempTimeframe((prev) => ({ ...prev, startTime: e.target.value }))}
-                            className="col-span-3"
-                          />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="endTime" className="text-right">
-                            End Time
-                          </Label>
-                          <Input
-                            id="endTime"
-                            type="time"
-                            value={tempTimeframe.endTime}
-                            onChange={(e) => setTempTimeframe((prev) => ({ ...prev, endTime: e.target.value }))}
-                            className="col-span-3"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsTimeframeDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button type="button" onClick={handleUpdateTimeframe}>
-                          Update Timeframe
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Present Agents</h4>
+                  <ul className="space-y-2 text-sm max-h-24 overflow-y-auto">
+                    {dataToUse.attendance.presentAgents.length > 0 ? (
+                      dataToUse.attendance.presentAgents.map((agent) => (
+                        <li key={agent.name} className="flex justify-between">
+                          <span className="truncate">{agent.name}</span>
+                          <span className="text-muted-foreground flex-shrink-0 ml-2">{agent.time}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-muted-foreground text-center">No agents present yet.</li>
+                    )}
+                  </ul>
                 </div>
+
+                <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full bg-transparent !mt-6 h-10 sm:h-9">
+                      <Clock className="h-4 w-4 mr-2" />
+                      <span className="truncate">Update Timeframe ({dataToUse.attendance.timeframe.startTime} - {dataToUse.attendance.timeframe.endTime})</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px] w-[95vw]">
+                    <DialogHeader>
+                      <DialogTitle>Update Attendance Timeframe</DialogTitle>
+                      <DialogDescription>Set the time window for agent attendance tracking.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="startTime" className="text-right text-sm">Start Time</Label>
+                        <Input id="startTime" type="time" value={tempTimeframe.startTime} onChange={(e) => setTempTimeframe((prev) => ({ ...prev, startTime: e.target.value }))} className="col-span-3 h-10 sm:h-9" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="endTime" className="text-right text-sm">End Time</Label>
+                        <Input id="endTime" type="time" value={tempTimeframe.endTime} onChange={(e) => setTempTimeframe((prev) => ({ ...prev, endTime: e.target.value }))} className="col-span-3 h-10 sm:h-9" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsTimeframeDialogOpen(false)} className="h-10 sm:h-9">Cancel</Button>
+                      <Button type="button" onClick={handleUpdateTimeframe} className="h-10 sm:h-9">Update Timeframe</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
+
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+          {/* Group Performance Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Group Performance</CardTitle>
+              <CardDescription>Total clients collected per group</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250} className="min-h-[250px]">
+                <BarChart data={dataToUse.groupPerformance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="clients" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Individual Performance Pie Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Individual Performance</CardTitle>
+              <CardDescription>Client distribution among top agents</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250} className="min-h-[250px]">
+                <PieChart>
+                  <Pie data={dataToUse.individualPerformance} dataKey="clients" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {dataToUse.individualPerformance.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <Skeleton className="h-8 w-8" />
+        <div className="flex-1">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64 mt-1" />
+        </div>
+        <Skeleton className="h-9 w-28" />
+      </header>
+      <main className="flex-1 space-y-6 p-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-1/3 mb-1" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-7 w-1/4" />
+              <Skeleton className="h-3 w-full" />
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mt-1" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[300px] w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mt-1" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-[300px] w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   )
 }

@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
+import { useAttendance } from "@/contexts/AttendanceContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,123 +19,128 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { Plus, Target, User, Phone, Mail, MapPin, Calendar } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Plus,
+  User,
+  Phone,
+  MapPin,
+  FileText,
+  DollarSign,
+  Wallet,
+  Info,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getClients, createClient } from "@/lib/api"
+import { Client } from "@/lib/types"
+import { Skeleton } from "@/components/ui/skeleton"
 
-interface Client {
-  id: string
-  name: string
-  email: string
-  phone: string
-  address: string
-  insuranceType: string
-  status: "contacted" | "interested" | "converted" | "rejected"
-  collectedAt: string
-  notes: string
-}
+// Defensive: ensure all fields are always defined in initialNewClientState
+const initialNewClientState = {
+  fullName: "",
+  nationalId: "",
+  phoneNumber: "",
+  email: "",
+  location: "",
+  dateOfBirth: "",
+  insuranceType: "",
+  payingAmount: 0,
+  payingMethod: "cash",
+  contractYears: "1", // string for input
+};
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      name: "John Smith",
-      email: "john.smith@email.com",
-      phone: "+1 234-567-8901",
-      address: "123 Main St, Downtown",
-      insuranceType: "Life Insurance",
-      status: "converted",
-      collectedAt: "2024-01-15 10:30",
-      notes: "Interested in comprehensive life insurance plan",
-    },
-    {
-      id: "2",
-      name: "Sarah Johnson",
-      email: "sarah.j@email.com",
-      phone: "+1 234-567-8902",
-      address: "456 Oak Ave, Uptown",
-      insuranceType: "Health Insurance",
-      status: "interested",
-      collectedAt: "2024-01-14 14:20",
-      notes: "Looking for family health coverage",
-    },
-    {
-      id: "3",
-      name: "Mike Wilson",
-      email: "mike.w@email.com",
-      phone: "+1 234-567-8903",
-      address: "789 Pine St, Midtown",
-      insuranceType: "Auto Insurance",
-      status: "contacted",
-      collectedAt: "2024-01-13 09:15",
-      notes: "Needs auto insurance for new vehicle",
-    },
-  ])
+  const { isAttendanceMarked } = useAttendance()
+  const { toast } = useToast()
+  const [clients, setClients] = useState<Client[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [newClient, setNewClient] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    insuranceType: "",
-    notes: "",
-  })
+  const [newClient, setNewClient] = useState(initialNewClientState)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
-  const { toast } = useToast()
-
-  const handleAddClient = () => {
-    const client: Client = {
-      id: Date.now().toString(),
-      name: newClient.name,
-      email: newClient.email,
-      phone: newClient.phone,
-      address: newClient.address,
-      insuranceType: newClient.insuranceType,
-      status: "contacted",
-      collectedAt: new Date().toLocaleString(),
-      notes: newClient.notes,
-    }
-
-    setClients([client, ...clients])
-    setNewClient({ name: "", email: "", phone: "", address: "", insuranceType: "", notes: "" })
-    setIsAddDialogOpen(false)
-
-    toast({
-      title: "Client Added",
-      description: `${client.name} has been added to your client list.`,
-    })
-  }
-
-  const handleUpdateStatus = (clientId: string, newStatus: Client["status"]) => {
-    setClients(clients.map((client) => (client.id === clientId ? { ...client, status: newStatus } : client)))
-
-    toast({
-      title: "Status Updated",
-      description: "Client status has been updated successfully.",
-    })
-  }
-
-  const getStatusColor = (status: Client["status"]) => {
-    switch (status) {
-      case "contacted":
-        return "secondary"
-      case "interested":
-        return "default"
-      case "converted":
-        return "default"
-      case "rejected":
-        return "destructive"
-      default:
-        return "secondary"
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true)
+      const data = await getClients()
+      setClients(data)
+    } catch (err) {
+      setError("Failed to load clients. Please try again later.")
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const todayClients = clients.filter((client) =>
-    client.collectedAt.startsWith(new Date().toISOString().split("T")[0]),
-  ).length
+  useEffect(() => {
+    fetchClients()
+  }, [])
+
+  const handleAddClient = async () => {
+    if (!newClient.fullName || !newClient.nationalId || !newClient.phoneNumber || !newClient.insuranceType) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Full Name, National ID, Phone Number, and Insurance Type are required.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Only send the fields required by the backend
+      const { fullName, nationalId, phoneNumber, email, location, dateOfBirth, insuranceType, payingAmount, payingMethod, contractYears } = newClient;
+      const clientToCreate = {
+        fullName,
+        nationalId,
+        phoneNumber,
+        email,
+        location,
+        dateOfBirth,
+        insuranceType,
+        payingAmount,
+        payingMethod,
+        contractYears: parseInt(contractYears) || 1,
+      };
+      const createdClient = await createClient(clientToCreate)
+      fetchClients()
+      setNewClient(initialNewClientState)
+      setIsAddDialogOpen(false)
+      toast({
+        title: "Client Added Successfully",
+        description: `${createdClient.fullName} has been added to your list.`,
+      })
+    } catch (error) {
+      let errorMsg = "Something went wrong. Please try again or contact support."
+      if (error instanceof Error) {
+        try {
+          const parsed = JSON.parse(error.message)
+          if (parsed.details && parsed.details.includes("National ID")) {
+            errorMsg = "A client with this National ID already exists. Please check and try again."
+          } else if (parsed.message === "Validation error" && Array.isArray(parsed.errors)) {
+            errorMsg = parsed.errors.join("\n")
+          } else if (parsed.message) {
+            errorMsg = parsed.message
+          }
+        } catch {
+          if (error.message.includes("National ID")) {
+            errorMsg = "A client with this National ID already exists. Please check and try again."
+          } else {
+            errorMsg = error.message
+          }
+        }
+      }
+      toast({
+        title: "Failed to Add Client",
+        description: errorMsg,
+        variant: "destructive",
+      })
+      console.error(error)
+    }
+  }
 
   return (
     <div className="flex flex-col">
@@ -141,221 +149,253 @@ export default function ClientsPage() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Client Management</h1>
-          <p className="text-sm text-muted-foreground">Manage your client collection and follow-ups</p>
+          <p className="text-sm text-muted-foreground">Add and manage client information</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <span>
+            <Button disabled={!isAttendanceMarked}>
+              <Plus className="mr-2 h-4 w-4" />
               Add Client
             </Button>
+            </span>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
-              <DialogDescription>Collect information for a new potential client</DialogDescription>
+              <DialogTitle>Add a New Client</DialogTitle>
+              <DialogDescription>
+                Fill in the details below. Required fields are marked with an asterisk (*).
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-6 py-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={newClient.name}
-                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                    placeholder="John Smith"
-                  />
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input id="fullName" value={newClient.fullName || ""} onChange={e => setNewClient({ ...newClient, fullName: e.target.value })} placeholder="e.g., John Doe" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    placeholder="+1 234-567-8901"
-                  />
+                  <Label htmlFor="nationalId">National ID *</Label>
+                  <Input id="nationalId" value={newClient.nationalId || ""} onChange={e => setNewClient({ ...newClient, nationalId: e.target.value })} placeholder="e.g., 9988776655" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Input id="phoneNumber" value={newClient.phoneNumber || ""} onChange={e => setNewClient({ ...newClient, phoneNumber: e.target.value })} placeholder="e.g., 0788520617" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" value={newClient.email || ""} onChange={e => setNewClient({ ...newClient, email: e.target.value })} placeholder="e.g., john@example.com" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input id="location" value={newClient.location || ""} onChange={e => setNewClient({ ...newClient, location: e.target.value })} placeholder="e.g., gatsata" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input id="dateOfBirth" type="date" value={newClient.dateOfBirth || ""} onChange={e => setNewClient({ ...newClient, dateOfBirth: e.target.value })} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="insuranceType">Insurance Type *</Label>
+                  <Input id="insuranceType" value={newClient.insuranceType || ""} onChange={e => setNewClient({ ...newClient, insuranceType: e.target.value })} placeholder="e.g., motari" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="payingAmount">Paying Amount</Label>
+                  <Input id="payingAmount" type="number" value={newClient.payingAmount ?? 0} onChange={e => setNewClient({ ...newClient, payingAmount: parseFloat(e.target.value) || 0 })} placeholder="e.g., 2000" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="payingMethod">Paying Method</Label>
+                  <Select value={newClient.payingMethod} onValueChange={(value) => setNewClient({ ...newClient, payingMethod: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="bank">Bank Transfer</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="contractYears">Contract Years</Label>
+                  <Input id="contractYears" type="number" value={newClient.contractYears || ""} onChange={e => setNewClient({ ...newClient, contractYears: e.target.value })} placeholder="e.g., 5" />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newClient.email}
-                  onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                  placeholder="john.smith@email.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={newClient.address}
-                  onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-                  placeholder="123 Main St, Downtown"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="insuranceType">Insurance Type</Label>
-                <Select
-                  value={newClient.insuranceType}
-                  onValueChange={(value) => setNewClient({ ...newClient, insuranceType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select insurance type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Life Insurance">Life Insurance</SelectItem>
-                    <SelectItem value="Health Insurance">Health Insurance</SelectItem>
-                    <SelectItem value="Auto Insurance">Auto Insurance</SelectItem>
-                    <SelectItem value="Property Insurance">Property Insurance</SelectItem>
-                    <SelectItem value="Business Insurance">Business Insurance</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={newClient.notes}
-                  onChange={(e) => setNewClient({ ...newClient, notes: e.target.value })}
-                  placeholder="Additional notes about the client..."
-                  rows={3}
-                />
-              </div>
-
-              <Button onClick={handleAddClient} className="w-full">
-                Add Client
-              </Button>
+              <Button onClick={handleAddClient} className="w-full mt-4">Add Client</Button>
             </div>
           </DialogContent>
         </Dialog>
       </header>
 
       <div className="flex-1 space-y-6 p-6">
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        {/* Clients Table */}
+        {isLoading ? (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-4 w-1/2" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{clients.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
-              <Calendar className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{todayClients}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Converted</CardTitle>
-              <Target className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{clients.filter((c) => c.status === "converted").length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-              <Target className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {clients.length > 0
-                  ? Math.round((clients.filter((c) => c.status === "converted").length / clients.length) * 100)
-                  : 0}
-                %
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4 p-4 border rounded-md">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                    <Skeleton className="h-8 w-1/4" />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Clients Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Client List</CardTitle>
-            <CardDescription>Manage your collected clients and track their status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Insurance Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Collected At</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium">{client.name}</div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {client.address}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {client.email}
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <Phone className="h-3 w-3 mr-1" />
-                          {client.phone}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{client.insuranceType}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={client.status}
-                        onValueChange={(value: Client["status"]) => handleUpdateStatus(client.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="contacted">Contacted</SelectItem>
-                          <SelectItem value="interested">Interested</SelectItem>
-                          <SelectItem value="converted">Converted</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>{client.collectedAt}</TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" className="bg-transparent">
-                        <User className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    </TableCell>
+        ) : error ? (
+          <Card className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-lg font-semibold text-destructive">Error</p>
+              <p className="text-muted-foreground">{error}</p>
+              <Button onClick={fetchClients} className="mt-4">Retry</Button>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Clients</CardTitle>
+              <CardDescription>A list of all clients in your portfolio.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Policy</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {clients.filter(client => client.fullName && client.nationalId && client.insuranceType).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        No clients found. Click 'Add Client' to get started.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    clients
+                      .filter(client => client.fullName && client.nationalId && client.insuranceType)
+                      .map(client => (
+                        <TableRow
+                          key={client.id}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setSelectedClient(client)
+                            setIsDetailsDialogOpen(true)
+                          }}
+                        >
+                          <TableCell>
+                            <div className="font-medium">{client.fullName}</div>
+                            <div className="text-sm text-muted-foreground">{client.phoneNumber}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{client.insuranceType}</div>
+                            <div className="text-sm text-muted-foreground">${client.payingAmount} / {client.payingMethod}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={client.active ? 'default' : 'secondary'}>
+                              {client.active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={e => {
+                                e.stopPropagation()
+                                setSelectedClient(client)
+                                setIsDetailsDialogOpen(true)
+                              }}
+                            >
+                              View Details
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+
+        {/* Client Details Dialog */}
+        {selectedClient && (
+          <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{selectedClient.fullName}</DialogTitle>
+                <DialogDescription>Detailed information for the client.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center">
+                  <User className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Contact</p>
+                    <p className="text-sm text-muted-foreground">{selectedClient.fullName}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <MapPin className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-sm text-muted-foreground">{selectedClient.location || 'N/A'}</p>
+                  </div>
+                </div>
+                <Separator className="my-2" />
+                <div className="flex items-center">
+                  <FileText className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Insurance Type</p>
+                    <p className="text-sm text-muted-foreground">{selectedClient.insuranceType}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <DollarSign className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Amount</p>
+                    <p className="text-sm text-muted-foreground">${selectedClient.payingAmount}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Wallet className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Paying Method</p>
+                    <p className="text-sm text-muted-foreground capitalize">{selectedClient.payingMethod}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Info className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Contract Years</p>
+                    <p className="text-sm text-muted-foreground">{selectedClient.contractYears}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Info className="mr-3 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Status</p>
+                    <p className="text-sm text-muted-foreground capitalize">{selectedClient.active ? 'Active' : 'Inactive'}</p>
+                  </div>
+                </div>
+                {selectedClient.notes && (
+                  <div className="flex items-start">
+                    <Info className="mr-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Notes</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedClient.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   )

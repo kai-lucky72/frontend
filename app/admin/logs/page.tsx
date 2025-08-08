@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Search, Download, AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react"
+import { getLogs } from "@/lib/api"
 
 interface LogEntry {
   id: string
@@ -24,57 +25,39 @@ interface LogEntry {
 }
 
 export default function LogsPage() {
-  const [logs] = useState<LogEntry[]>([
-    {
-      id: "1",
-      timestamp: "2024-01-15 10:30:45",
-      level: "info",
-      category: "auth",
-      message: "User login successful",
-      user: "john.smith@company.com",
-      ip: "192.168.1.100",
-      details: "Manager login from desktop",
-    },
-    {
-      id: "2",
-      timestamp: "2024-01-15 10:25:12",
-      level: "warning",
-      category: "system",
-      message: "High memory usage detected",
-      details: "Memory usage at 85%",
-    },
-    {
-      id: "3",
-      timestamp: "2024-01-15 10:20:33",
-      level: "error",
-      category: "security",
-      message: "Failed login attempt",
-      user: "unknown@email.com",
-      ip: "203.0.113.1",
-      details: "Multiple failed attempts detected",
-    },
-    {
-      id: "4",
-      timestamp: "2024-01-15 10:15:22",
-      level: "success",
-      category: "user",
-      message: "New agent created",
-      user: "manager@company.com",
-      details: "Agent AGT005 created successfully",
-    },
-    {
-      id: "5",
-      timestamp: "2024-01-15 10:10:11",
-      level: "info",
-      category: "system",
-      message: "Database backup completed",
-      details: "Scheduled backup completed successfully",
-    },
-  ])
-
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [stats, setStats] = useState<any>({ errorCount: 0, warningCount: 0, infoCount: 0, successCount: 0 })
+  const [pagination, setPagination] = useState<any>({ page: 1, limit: 10, total: 0 })
   const [searchTerm, setSearchTerm] = useState("")
   const [levelFilter, setLevelFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const data = await getLogs({
+          level: levelFilter,
+          category: categoryFilter,
+          search: searchTerm,
+          page: pagination.page,
+          limit: pagination.limit,
+        })
+        setLogs(data.logs || [])
+        setStats(data.stats || { errorCount: 0, warningCount: 0, infoCount: 0, successCount: 0 })
+        setPagination(data.pagination || { page: 1, limit: 10, total: 0 })
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch logs')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchLogs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, levelFilter, categoryFilter, pagination.page, pagination.limit])
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
@@ -116,10 +99,10 @@ export default function LogsPage() {
     }
   }
 
-  const errorCount = logs.filter((log) => log.level === "error").length
-  const warningCount = logs.filter((log) => log.level === "warning").length
-  const infoCount = logs.filter((log) => log.level === "info").length
-  const successCount = logs.filter((log) => log.level === "success").length
+  const errorCount = stats.errorCount
+  const warningCount = stats.warningCount
+  const infoCount = stats.infoCount
+  const successCount = stats.successCount
 
   return (
     <div className="flex flex-col">
@@ -147,7 +130,7 @@ export default function LogsPage() {
               <Info className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{logs.length}</div>
+              <div className="text-2xl font-bold">{pagination.total}</div>
               <div className="text-xs text-muted-foreground">Last 24 hours</div>
             </CardContent>
           </Card>
@@ -247,23 +230,43 @@ export default function LogsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-mono text-sm">{log.timestamp}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getLevelIcon(log.level)}
-                            <Badge variant={getLevelVariant(log.level)}>{log.level}</Badge>
-                          </div>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          Loading logs...
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{log.category}</Badge>
-                        </TableCell>
-                        <TableCell>{log.message}</TableCell>
-                        <TableCell>{log.user || "-"}</TableCell>
-                        <TableCell className="max-w-xs truncate">{log.details || "-"}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : error ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-red-600">
+                          {error}
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No logs found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="font-mono text-sm">{log.timestamp}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getLevelIcon(log.level)}
+                              <Badge variant={getLevelVariant(log.level)}>{log.level}</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{log.category}</Badge>
+                          </TableCell>
+                          <TableCell>{log.message}</TableCell>
+                          <TableCell>{log.user || "-"}</TableCell>
+                          <TableCell className="max-w-xs truncate">{log.details || "-"}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -278,7 +281,11 @@ export default function LogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {logs
+                  {isLoading ? (
+                    <div className="text-center py-8">Loading error logs...</div>
+                  ) : error ? (
+                    <div className="text-center py-8 text-red-600">{error}</div>
+                  ) : logs
                     .filter((log) => log.level === "error")
                     .map((log) => (
                       <div
@@ -313,7 +320,11 @@ export default function LogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {logs
+                  {isLoading ? (
+                    <div className="text-center py-8">Loading security logs...</div>
+                  ) : error ? (
+                    <div className="text-center py-8 text-red-600">{error}</div>
+                  ) : logs
                     .filter((log) => log.category === "security")
                     .map((log) => (
                       <div key={log.id} className="flex items-start gap-4 p-4 border rounded-lg">
@@ -345,7 +356,11 @@ export default function LogsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {logs
+                  {isLoading ? (
+                    <div className="text-center py-8">Loading authentication logs...</div>
+                  ) : error ? (
+                    <div className="text-center py-8 text-red-600">{error}</div>
+                  ) : logs
                     .filter((log) => log.category === "auth")
                     .map((log) => (
                       <div key={log.id} className="flex items-start gap-4 p-4 border rounded-lg">

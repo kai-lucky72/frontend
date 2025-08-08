@@ -32,7 +32,7 @@ interface ChartTooltipProps {
   label?: string
 }
 
-const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
+const CustomChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-md">
@@ -48,6 +48,6 @@ const ChartTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   return null
 }
 
-const ChartTooltipContent = ChartTooltip
+const ChartTooltipContent = CustomChartTooltip
 
-export { ChartContainer, ChartTooltip, ChartTooltipContent }
+export { ChartContainer, CustomChartTooltip as ChartTooltip, ChartTooltipContent }
