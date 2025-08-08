@@ -79,15 +79,19 @@ export default function AttendancePage() {
           absentCount: data.absentCount || 0
         })
         // Fetch timeframe from backend
-        const tf = await getAgentAttendanceTimeframe()
-        console.log("Fetched timeframe:", tf)
-        const newTimeframe = { start: tf.startTime, end: tf.endTime }
-        console.log("Setting timeframe to:", newTimeframe)
-        setTimeframe(newTimeframe)
+        let tf
+        try {
+          tf = await getAgentAttendanceTimeframe()
+          console.log("Fetched timeframe from API:", tf)
+        } catch (error) {
+          console.error("Error fetching timeframe:", error)
+          // Set a default timeframe for testing (5:00 AM to 5:00 PM)
+          tf = { startTime: "5:00 AM", endTime: "5:00 PM" }
+          console.log("Using default timeframe:", tf)
+        }
         
-        // Immediately check timeframe after setting it
-        const now = new Date()
-        const parseTime = (timeStr: string) => {
+        // Convert 12-hour format to 24-hour format
+        const convertTo24Hour = (timeStr: string) => {
           const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
           if (match) {
             let hour = parseInt(match[1], 10)
@@ -100,45 +104,48 @@ export default function AttendancePage() {
               hour = 0
             }
             
-            return { hour, minute }
+            return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
           }
-          
+          return timeStr // Return as-is if not 12-hour format
+        }
+        
+        const newTimeframe = { 
+          start: convertTo24Hour(tf.startTime), 
+          end: convertTo24Hour(tf.endTime) 
+        }
+        console.log("Converted timeframe (24-hour):", newTimeframe)
+        setTimeframe(newTimeframe)
+        
+        // Force a re-render by updating timeState immediately
+        const now = new Date()
+        
+        // Parse time function for 24-hour format
+        const parseTime = (timeStr: string) => {
           const parts = timeStr.split(":")
           const hour = parseInt(parts[0], 10)
           const minute = parseInt(parts[1], 10)
           return { hour, minute }
         }
-
-        try {
-          console.log("Parsing times:", { start: newTimeframe.start, end: newTimeframe.end })
-          const startTime = parseTime(newTimeframe.start)
-          const endTime = parseTime(newTimeframe.end)
-          console.log("Parsed times:", { startTime, endTime })
-
-          const startDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startTime.hour, startTime.minute)
-          const endDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endTime.hour, endTime.minute)
-
-          const totalDuration = endDateTime.getTime() - startDateTime.getTime()
-          const warningTime = startDateTime.getTime() + totalDuration * 0.75
-
-          console.log("Immediate time check:", {
-            now: now.toLocaleTimeString(),
-            start: startDateTime.toLocaleTimeString(),
-            end: endDateTime.toLocaleTimeString(),
-            isActive: now >= startDateTime && now <= endDateTime,
-            timeframe: newTimeframe,
-            parsedStart: startTime,
-            parsedEnd: endTime
-          })
-
-          if (now >= startDateTime && now <= endDateTime) {
-            setTimeState({ isActive: true, isWarning: now.getTime() >= warningTime, isExpired: false })
-          } else {
-            setTimeState({ isActive: false, isWarning: false, isExpired: now > endDateTime })
-          }
-        } catch (error) {
-          console.error("Error parsing timeframe:", error)
-          setTimeState({ isActive: false, isWarning: false, isExpired: false })
+        
+        const startTime = parseTime(newTimeframe.start)
+        const endTime = parseTime(newTimeframe.end)
+        
+        const startDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startTime.hour, startTime.minute)
+        const endDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endTime.hour, endTime.minute)
+        
+        console.log("Forced time check:", {
+          now: now.toLocaleTimeString(),
+          start: startDateTime.toLocaleTimeString(),
+          end: endDateTime.toLocaleTimeString(),
+          isActive: now >= startDateTime && now <= endDateTime
+        })
+        
+        if (now >= startDateTime && now <= endDateTime) {
+          console.log("Setting timeState to ACTIVE")
+          setTimeState({ isActive: true, isWarning: false, isExpired: false })
+        } else {
+          console.log("Setting timeState to INACTIVE")
+          setTimeState({ isActive: false, isWarning: false, isExpired: now > endDateTime })
         }
       } catch (err: any) {
         setError(err.message || 'Failed to fetch attendance history')
@@ -156,30 +163,16 @@ export default function AttendancePage() {
       return
     }
 
-    const checkTimeframe = () => {
-      const now = new Date()
-      
-      const parseTime = (timeStr: string) => {
-        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
-        if (match) {
-          let hour = parseInt(match[1], 10)
-          const minute = parseInt(match[2], 10)
-          const period = match[3].toUpperCase()
-          
-          if (period === 'PM' && hour !== 12) {
-            hour += 12
-          } else if (period === 'AM' && hour === 12) {
-            hour = 0
-          }
-          
+          const checkTimeframe = () => {
+        const now = new Date()
+        
+        const parseTime = (timeStr: string) => {
+          // Now expecting 24-hour format like "05:00" or "17:00"
+          const parts = timeStr.split(":")
+          const hour = parseInt(parts[0], 10)
+          const minute = parseInt(parts[1], 10)
           return { hour, minute }
         }
-        
-        const parts = timeStr.split(":")
-        const hour = parseInt(parts[0], 10)
-        const minute = parseInt(parts[1], 10)
-        return { hour, minute }
-      }
 
       try {
         const startTime = parseTime(timeframe.start)
@@ -237,7 +230,8 @@ export default function AttendancePage() {
       attendanceTime,
       timeState,
       timeframe,
-      currentTime: new Date().toLocaleTimeString()
+      currentTime: new Date().toLocaleTimeString(),
+      isActive: timeState.isActive
     })
     if (isAttendanceMarked || attendanceTime) {
       return (

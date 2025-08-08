@@ -70,24 +70,64 @@ export default function AgentDashboard() {
 
   useEffect(() => {
     const checkTimeframe = () => {
+      // Don't check if timeframe is not loaded yet
+      if (attendanceTimeframe.start === "-" || attendanceTimeframe.end === "-") {
+        return
+      }
+
       const now = new Date()
-      const [startHour, startMinute] = attendanceTimeframe.start.split(":").map(Number)
-      const [endHour, endMinute] = attendanceTimeframe.end.split(":").map(Number)
+      
+      // Parse time strings (handle "HH:MM AM/PM" format)
+      const parseTime = (timeStr: string) => {
+        const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
+        if (match) {
+          let hour = parseInt(match[1], 10)
+          const minute = parseInt(match[2], 10)
+          const period = match[3].toUpperCase()
+          
+          if (period === 'PM' && hour !== 12) {
+            hour += 12
+          } else if (period === 'AM' && hour === 12) {
+            hour = 0
+          }
+          
+          return { hour, minute }
+        }
+        
+        // Fallback for "HH:MM" format
+        const parts = timeStr.split(":")
+        const hour = parseInt(parts[0], 10)
+        const minute = parseInt(parts[1], 10)
+        return { hour, minute }
+      }
 
-      const startTime = new Date(now)
-      startTime.setHours(startHour, startMinute, 0, 0)
+      try {
+        const startTime = parseTime(attendanceTimeframe.start)
+        const endTime = parseTime(attendanceTimeframe.end)
 
-      const endTime = new Date(now)
-      endTime.setHours(endHour, endMinute, 0, 0)
+        const startDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startTime.hour, startTime.minute)
+        const endDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endTime.hour, endTime.minute)
 
-      const warningTime = new Date(endTime)
-      warningTime.setMinutes(endTime.getMinutes() - 15)
+        const warningTime = new Date(endDateTime)
+        warningTime.setMinutes(endDateTime.getMinutes() - 15)
 
-      setTimeState({
-        isActive: now >= startTime && now <= endTime,
-        isWarning: now > warningTime && now <= endTime,
-        isExpired: now > endTime,
-      })
+        console.log("Dashboard time check:", {
+          now: now.toLocaleTimeString(),
+          start: startDateTime.toLocaleTimeString(),
+          end: endDateTime.toLocaleTimeString(),
+          isActive: now >= startDateTime && now <= endDateTime,
+          timeframe: attendanceTimeframe
+        })
+
+        setTimeState({
+          isActive: now >= startDateTime && now <= endDateTime,
+          isWarning: now > warningTime && now <= endDateTime,
+          isExpired: now > endDateTime,
+        })
+      } catch (error) {
+        console.error("Error parsing timeframe:", error)
+        setTimeState({ isActive: false, isWarning: false, isExpired: false })
+      }
     }
 
     checkTimeframe()
@@ -148,6 +188,14 @@ export default function AgentDashboard() {
   }
 
   const getAttendanceButton = () => {
+    console.log("Dashboard button state:", {
+      isAttendanceMarked,
+      attendanceTime,
+      timeState,
+      attendanceTimeframe,
+      currentTime: new Date().toLocaleTimeString()
+    })
+    
     if (isAttendanceMarked || attendanceTime) {
       return (
         <Button size="lg" disabled className="w-full cursor-not-allowed">
@@ -164,10 +212,20 @@ export default function AgentDashboard() {
         </Button>
       )
     }
+    if (timeState.isActive) {
+      console.log("Rendering ACTIVE attendance button")
+      return (
+        <Button size="lg" onClick={() => setIsAttendanceDialogOpen(true)} className={`w-full bg-red-600 hover:bg-red-700`}>
+          <Clock className="mr-2 h-5 w-5" />
+          Mark Attendance
+        </Button>
+      )
+    }
+    console.log("Rendering DISABLED attendance button")
     return (
-      <Button size="lg" onClick={() => setIsAttendanceDialogOpen(true)} className={`w-full bg-red-600 hover:bg-red-700`} disabled={!timeState.isActive}>
+      <Button size="lg" disabled className={`w-full bg-gray-400`}>
         <Clock className="mr-2 h-5 w-5" />
-        Mark Attendance
+        Mark Attendance (Disabled)
       </Button>
     )
   }
