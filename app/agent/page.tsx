@@ -15,20 +15,11 @@ import { AgentProfileCard } from "@/components/ui/agent-profile-card"
 import { getAgentDashboardData, getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance } from "@/lib/api"
 import { IndividualAgentDashboardData, SalesAgentDashboardData, Activity } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, Clock, Calendar, Check, X, Plus } from "lucide-react"
+import { Users, Clock, Calendar, Check, X } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// Add initial state for new client (from clients/page.tsx)
-const initialNewClientState = {
-  name: "",
-  contact: "",
-  address: "",
-  policy: "",
-  amount: 0,
-  payingMethod: "cash",
-  notes: "",
-}
+// Removed client add state (feature deprecated)
 
 // --- Main Component ---
 export default function AgentDashboard() {
@@ -65,8 +56,7 @@ export default function AgentDashboard() {
   const [attendanceTimeframe, setAttendanceTimeframe] = useState<{ start: string; end: string }>({ start: "-", end: "-" })
   // Use the fetched attendanceTimeframe for all logic
   const [timeState, setTimeState] = useState({ isActive: false, isWarning: false, isExpired: false })
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [newClient, setNewClient] = useState(initialNewClientState)
+  
 
   useEffect(() => {
     const checkTimeframe = () => {
@@ -119,7 +109,7 @@ export default function AgentDashboard() {
           timeframe: attendanceTimeframe
         })
 
-        setTimeState({
+      setTimeState({
           isActive: now >= startDateTime && now <= endDateTime,
           isWarning: now > warningTime && now <= endDateTime,
           isExpired: now > endDateTime,
@@ -158,34 +148,7 @@ export default function AgentDashboard() {
     }
   }
 
-  // Add Client handler (from clients/page.tsx)
-  const handleAddClient = async () => {
-    if (!newClient.name || !newClient.contact || !newClient.policy) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Full Name, Contact, and Policy are required.",
-        variant: "destructive",
-      })
-      return
-    }
-    try {
-      // Use createClient from lib/api
-      const clientToCreate = { ...newClient, status: "pending" }
-      await import("@/lib/api").then(({ createClient }) => createClient(clientToCreate))
-      setNewClient(initialNewClientState)
-      setIsAddDialogOpen(false)
-      toast({
-        title: "Client Added Successfully",
-        description: `${newClient.name} has been added to your list.`,
-      })
-    } catch (error) {
-      toast({
-        title: "Failed to Add Client",
-        description: "An error occurred while adding the client. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
+  // Removed client add handler (feature deprecated)
 
   const getAttendanceButton = () => {
     console.log("Dashboard button state:", {
@@ -271,22 +234,18 @@ export default function AgentDashboard() {
   const mockIndividualData: IndividualAgentDashboardData = {
     agentType: "individual",
     attendanceMarked: false,
-    clientsThisMonth: 5,
-    totalClients: 20,
     recentActivities: [
-      { id: "1", description: "Collected 2 clients", timestamp: "2024-07-10 09:00" },
+      { id: "1", description: "Marked attendance", timestamp: "2024-07-10 09:00" },
       { id: "2", description: "Marked attendance", timestamp: "2024-07-10 08:30" },
     ],
   };
   const mockSalesData: SalesAgentDashboardData = {
     agentType: "sales",
     attendanceMarked: true,
-    clientsThisMonth: 10,
-    totalClients: 50,
     groupName: "PrimeoSummit",
     teamLeader: "lucky kail",
     recentActivities: [
-      { id: "1", description: "Collected 5 clients", timestamp: "2024-07-10 09:00" },
+      { id: "1", description: "Marked attendance", timestamp: "2024-07-10 09:00" },
       { id: "2", description: "Group meeting", timestamp: "2024-07-09 15:00" },
     ],
   };
@@ -317,71 +276,7 @@ export default function AgentDashboard() {
         <div className="ml-auto flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-4">
           <span className="text-xs text-muted-foreground md:mr-2 hidden sm:block">Attendance Window: {attendanceTimeframe.start} - {attendanceTimeframe.end}</span>
           {getAttendanceButton()}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button size="sm" className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 px-2 sm:px-3" variant="default" disabled={!(isAttendanceMarked || attendanceTime)}>
-                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Add Client</span>
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {!(isAttendanceMarked || attendanceTime)
-                  ? "You must mark your attendance before adding clients."
-                  : "Add a new client to your list."}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add a New Client</DialogTitle>
-                <DialogDescription>Fill in the details below. Required fields are marked with an asterisk (*).</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input id="name" value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} placeholder="e.g., John Doe" className="h-10 sm:h-9" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact">Contact (Phone or Email) *</Label>
-                    <Input id="contact" value={newClient.contact} onChange={e => setNewClient({ ...newClient, contact: e.target.value })} placeholder="e.g., +1-555-1234" className="h-10 sm:h-9" />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input id="address" value={newClient.address} onChange={e => setNewClient({ ...newClient, address: e.target.value })} placeholder="e.g., 123 Main St, Anytown, USA" className="h-10 sm:h-9" />
-                  </div>
-                </div>
-                <Separator />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="policy">Policy / Insurance Type *</Label>
-                    <Input id="policy" value={newClient.policy} onChange={e => setNewClient({ ...newClient, policy: e.target.value })} placeholder="e.g., Health Insurance" className="h-10 sm:h-9" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount ($)</Label>
-                    <Input id="amount" type="number" value={newClient.amount} onChange={e => setNewClient({ ...newClient, amount: parseFloat(e.target.value) || 0 })} placeholder="e.g., 250" className="h-10 sm:h-9" />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="payingMethod">Paying Method</Label>
-                    <select id="payingMethod" value={newClient.payingMethod} onChange={e => setNewClient({ ...newClient, payingMethod: e.target.value })} className="w-full border rounded px-3 py-2 h-10 sm:h-9 text-sm">
-                      <option value="cash">Cash</option>
-                      <option value="bank">Bank Transfer</option>
-                      <option value="check">Check</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea id="notes" value={newClient.notes} onChange={e => setNewClient({ ...newClient, notes: e.target.value })} placeholder="Any additional information..." className="min-h-[80px]" />
-                  </div>
-                </div>
-                <Button onClick={handleAddClient} className="w-full mt-4 h-10 sm:h-9" disabled={!(isAttendanceMarked || attendanceTime)}>Add Client</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          
         </div>
         <div className="flex items-center gap-2">
           {isMock ? (
@@ -414,29 +309,12 @@ export default function AgentDashboard() {
 // --- View Components ---
 
 const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data }) => {
-  const { clientsThisMonth, totalClients, recentActivities } = data
+  const { recentActivities } = data as any
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clients This Month</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{clientsThisMonth}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalClients}</div>
-          </CardContent>
-        </Card>
+        
       </div>
 
       <Card>
@@ -460,7 +338,7 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
 }
 
 const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
-  const { groupName, teamLeader, clientsThisMonth, totalClients, recentActivities } = data
+  const { groupName, teamLeader, recentActivities } = data as any
   const [userName, setUserName] = useState("Sales Agent")
 
   useEffect(() => {
@@ -473,24 +351,7 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
       <AgentProfileCard agentName={userName} agentType="Sales Agent" groupName={groupName} teamLeader={teamLeader} />
       
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clients This Month</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{clientsThisMonth}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalClients}</div>
-          </CardContent>
-        </Card>
+        
       </div>
 
       <Card>

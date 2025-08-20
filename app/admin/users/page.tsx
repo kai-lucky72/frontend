@@ -117,8 +117,8 @@ export default function UsersPage() {
               <Tabs value={selectedRole} onValueChange={setSelectedRole}>
                 <TabsList className="w-full sm:w-auto">
                   <TabsTrigger value="all" className="flex-1 sm:flex-none">All</TabsTrigger>
-                  <TabsTrigger value="manager" className="flex-1 sm:flex-none">Managers</TabsTrigger>
-                  <TabsTrigger value="agent" className="flex-1 sm:flex-none">Agents</TabsTrigger>
+                  <TabsTrigger value="manager" className="flex-1 sm:flex-none">Commercials</TabsTrigger>
+                  <TabsTrigger value="agent" className="flex-1 sm:flex-none">Sales Agents</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -133,7 +133,7 @@ export default function UsersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
-                      <TableHead>Work ID</TableHead>
+                      {/* Work ID removed */}
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Group/Agents</TableHead>
@@ -149,11 +149,9 @@ export default function UsersPage() {
                             <div className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{user.email}</div>
                           </div>
                         </TableCell>
+                        {/* Work ID cell removed */}
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">{user.workId}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.role === "manager" ? "default" : "secondary"} className="text-xs">{user.role}</Badge>
+                          <Badge variant={user.role === "manager" ? "default" : "secondary"} className="text-xs">{user.role === 'manager' ? 'commercial' : user.role === 'agent' ? 'sales-agent' : user.role}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={user.status === "active" ? "default" : "destructive"} className="text-xs">{user.status}</Badge>

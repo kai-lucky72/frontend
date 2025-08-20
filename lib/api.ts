@@ -3,7 +3,6 @@ import {
   AuthResponse,
   UserRole,
   AgentType,
-  Client,
   IndividualAgentDashboardData,
   SalesAgentDashboardData,
   GroupPerformanceData,
@@ -193,11 +192,12 @@ async function fetchApi(path: string, options: RequestInit = {}): Promise<any> {
 // AUTH API
 // ====================================================================
 
-export const login = async (email: string, workId: string, role: UserRole): Promise<AuthResponse> => {
+// Updated to accept phone and password only (role determined by backend)
+export const login = async (phone: string, password: string): Promise<AuthResponse> => {
   try {
     const response = await fetchApi('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, workId, role }),
+      body: JSON.stringify({ phoneNumber: phone, password }),
     });
 
     if (response.token) {
@@ -212,7 +212,7 @@ export const login = async (email: string, workId: string, role: UserRole): Prom
     
     // Provide specific login error messages
     if (apiError.status === 401) {
-      apiError.userFriendly = "Invalid email, work ID, or role. Please check your credentials and try again.";
+      apiError.userFriendly = "Invalid phone number or password. Please check your credentials and try again.";
     }
     
     throw apiError;
@@ -228,28 +228,13 @@ export async function getAgentDashboardData(): Promise<IndividualAgentDashboardD
   return fetchApi('/agent/dashboard');
 }
 
-// ====================================================================
-// CLIENTS API
-// ====================================================================
-
-export const getClients = async (): Promise<Client[]> => {
-  return fetchApi('/clients');
-};
-
-export const createClient = async (clientData: Omit<Client, 'id' | 'createdAt'>): Promise<Client> => {
-  return fetchApi('/clients', {
-    method: 'POST',
-    body: JSON.stringify(clientData),
-  });
-};
+// (Removed) Clients API – feature deprecated
 
 // ====================================================================
 // GROUP PERFORMANCE API
 // ====================================================================
 
-export const getGroupPerformanceData = async (): Promise<GroupPerformanceData> => {
-  return fetchApi('/agent/group-performance');
-};
+// (Removed) Group performance – deprecated
 
 
 // ====================================================================
@@ -295,12 +280,7 @@ export const getAgents = async (): Promise<Agent[]> => {
   return fetchApi('/manager/agents');
 };
 
-export const createAgent = async (agentData: Omit<Agent, 'id'>): Promise<Agent> => {
-  return fetchApi('/manager/agents', {
-    method: 'POST',
-    body: JSON.stringify(agentData),
-  });
-};
+// Create agent disabled — backend returns 403
 
 export const updateAgent = async (id: string, agentData: Partial<Omit<Agent, 'id'>>): Promise<Agent> => {
   // Extract numeric ID from string ID (e.g., "agt-015" -> "15")
@@ -435,20 +415,20 @@ export const getNotifications = async (params: { page?: number; limit?: number }
   return await fetchApi(`/admin/notifications${qs}`);
 }
 
-export const sendNotification = async (data: { title: string; message: string; recipient: string; priority: string; senderRole?: string; senderWorkId?: string }): Promise<any> => {
-  const body: any = { ...data, category: 'system' };
+export const sendNotification = async (data: { title: string; message: string; recipient: string; priority: string; senderRole?: string }): Promise<any> => {
+  const body: any = { title: data.title, message: data.message, recipient: data.recipient, priority: data.priority };
   if (data.senderRole) body.senderRole = data.senderRole;
-  if (data.senderWorkId) body.senderWorkId = data.senderWorkId;
   return await fetchApi('/admin/notifications', {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
-export const sendManagerNotification = async (data: { title: string; message: string; recipient: string; priority: string; senderRole: string; senderWorkId: string }): Promise<any> => {
+export const sendManagerNotification = async (data: { title: string; message: string; recipient: string; priority: string; senderRole: string }): Promise<any> => {
+  const body: any = { title: data.title, message: data.message, recipient: data.recipient, priority: data.priority, senderRole: data.senderRole };
   return await fetchApi('/manager/notifications', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
 };
 

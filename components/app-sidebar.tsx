@@ -43,7 +43,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 const adminNavItems = [
   { title: "Dashboard", url: "/admin", icon: Home },
-  { title: "Managers", url: "/admin/managers", icon: Users },
+  { title: "Commercials", url: "/admin/managers", icon: Users },
   { title: "All Users", url: "/admin/users", icon: Shield },
   { title: "System Logs", url: "/admin/logs", icon: BarChart3 },
   { title: "Notifications", url: "/admin/notifications", icon: Bell },
@@ -52,9 +52,7 @@ const adminNavItems = [
 
 const managerNavItems = [
   { title: "Dashboard", url: "/manager", icon: Home },
-  { title: "My Agents", url: "/manager/agents", icon: Users },
-  { title: "Groups", url: "/manager/groups", icon: Group },
-  { title: "Performance", url: "/manager/performance", icon: TrendingUp },
+  { title: "Sales Agents", url: "/manager/agents", icon: Users },
   { title: "Attendance", url: "/manager/attendance", icon: Clock },
   { title: "Notifications", url: "/manager/notifications", icon: Bell },
 ]
@@ -63,7 +61,6 @@ const managerNavItems = [
 const individualAgentNavItems = [
   { title: "Dashboard", url: "/agent", icon: Home },
   { title: "Attendance", url: "/agent/attendance", icon: UserCheck },
-  { title: "Clients", url: "/agent/clients", icon: Target },
   { title: "My Performance", url: "/agent/performance", icon: BarChart3 },
   { title: "Notifications", url: "/agent/notifications", icon: Bell },
 ]
@@ -72,9 +69,7 @@ const individualAgentNavItems = [
 const salesAgentNavItems = [
   { title: "Dashboard", url: "/agent", icon: Home },
   { title: "Attendance", url: "/agent/attendance", icon: UserCheck },
-  { title: "Clients", url: "/agent/clients", icon: Target },
   { title: "My Performance", url: "/agent/performance", icon: BarChart3 },
-  { title: "Group Performance", url: "/agent/group-performance", icon: Group },
   { title: "Notifications", url: "/agent/notifications", icon: Bell },
 ]
 
@@ -83,20 +78,18 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
   const router = useRouter()
   const [userInfo, setUserInfo] = useState({
     email: "",
-    workId: "",
     agentType: "individual",
     groupName: "",
   })
-  const [isClient, setIsClient] = useState(false)
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false)
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    setIsClient(true)
+    setIsUserLoggedIn(true)
     const email = localStorage.getItem("userEmail") || "user@company.com"
-    const workId = localStorage.getItem("workId") || "EMP001"
     const agentType = localStorage.getItem("agentType") || "individual"
     const groupName = localStorage.getItem("groupName") || ""
-    setUserInfo({ email, workId, agentType, groupName })
+    setUserInfo({ email, agentType, groupName })
   }, [])
 
   const getNavItems = () => {
@@ -142,7 +135,7 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
               <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
               <div className="min-w-0">
                 <h2 className="text-sm sm:text-lg font-semibold truncate">Prime Management</h2>
-                {isClient && <p className="text-xs text-muted-foreground truncate">{getPortalTitle()}</p>}
+                {isUserLoggedIn && <p className="text-xs text-muted-foreground truncate">{getPortalTitle()}</p>}
               </div>
             </div>
             {!isMobile && (
@@ -175,7 +168,7 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
 
         <SidebarFooter className="border-t border-sidebar-border">
           <div className="p-3 space-y-3">
-            {isClient && (
+            {isUserLoggedIn && (
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src="/placeholder.svg?height=40&width=40" />
@@ -183,7 +176,7 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{userInfo.email}</p>
-                  <p className="text-xs text-muted-foreground">{userInfo.workId}</p>
+                  {/* workId removed */}
                   {userRole === "agent" && userInfo.agentType === "sales" && userInfo.groupName && (
                     <p className="text-xs text-blue-600 truncate">{userInfo.groupName}</p>
                   )}

@@ -19,7 +19,6 @@ import { getManagerNotifications, sendManagerNotification } from "@/lib/api"
 interface Agent {
   id: string
   name: string
-  workId: string
   group: string
   email: string
 }
@@ -30,22 +29,20 @@ interface Notification {
   message: string
   recipients: string[]
   sentAt: string
-  readBy: number
-  totalRecipients: number
   priority: "low" | "normal" | "high" | "urgent"
 }
 
 export default function NotificationsPage() {
   const [agents] = useState<Agent[]>([
-    { id: "1", name: "John Doe", workId: "AGT001", group: "Alpha Team", email: "john.doe@company.com" },
-    { id: "2", name: "Sarah Smith", workId: "AGT002", group: "Alpha Team", email: "sarah.smith@company.com" },
-    { id: "3", name: "Mike Johnson", workId: "AGT003", group: "Individual", email: "mike.johnson@company.com" },
-    { id: "4", name: "Lisa Brown", workId: "AGT004", group: "Beta Team", email: "lisa.brown@company.com" },
+    { id: "1", name: "John Doe", group: "Alpha Team", email: "john.doe@company.com" },
+    { id: "2", name: "Sarah Smith", group: "Alpha Team", email: "sarah.smith@company.com" },
+    { id: "3", name: "Mike Johnson", group: "Individual", email: "mike.johnson@company.com" },
+    { id: "4", name: "Lisa Brown", group: "Beta Team", email: "lisa.brown@company.com" },
   ])
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [newNotification, setNewNotification] = useState({
     title: "",
@@ -84,7 +81,6 @@ export default function NotificationsPage() {
 
     // Get sender info from localStorage
     const senderRole = localStorage.getItem("userRole") || "manager";
-    const senderWorkId = localStorage.getItem("workId") || "";
 
     try {
       const response = await sendManagerNotification({
@@ -93,11 +89,10 @@ export default function NotificationsPage() {
         recipient,
         priority: newNotification.priority,
         senderRole,
-        senderWorkId,
       });
       toast({
         title: "Notification Sent",
-        description: `Notification sent to ${recipient} by ${response.sender?.workId || senderWorkId}`,
+        description: `Notification sent to ${recipient}`,
       });
       setNewNotification({
         title: "",
@@ -345,22 +340,16 @@ export default function NotificationsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground">{notification.message}</p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>To: {
-                              Array.isArray(notification.recipients)
-                                ? notification.recipients.join(", ")
-                                : (notification.recipient || "-")
-                            }</span>
+                            <span>To: {Array.isArray(notification.recipients) ? notification.recipients.join(", ") : "-"}</span>
                             <span>Sent: {notification.sentAt}</span>
                           </div>
                         </div>
                         <div className="text-right space-y-2">
                           <div className="text-sm font-medium">
-                            {notification.readBy}/{notification.totalRecipients} read
+                            {/* ReadBy/TotalRecipients removed */}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {notification.totalRecipients > 0 
-                              ? Math.round((notification.readBy / notification.totalRecipients) * 100)
-                              : 0}% read rate
+                            {/* ReadBy/TotalRecipients removed */}
                           </div>
                         </div>
                       </div>

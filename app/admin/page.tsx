@@ -17,7 +17,6 @@ import { Tooltip, Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContai
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useRouter } from "next/navigation"
-import { CreateManagerForm } from "@/components/forms/create-manager-form"
 import { useEffect } from "react"
 import { getManagers, getUsers, getNotifications, getLogs } from "@/lib/api"
 
@@ -80,13 +79,7 @@ export default function AdminDashboard() {
           <h1 className="text-lg sm:text-xl font-semibold truncate">Admin Dashboard</h1>
           <p className="text-xs sm:text-sm text-muted-foreground truncate">System overview and management</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => router.push("/admin/managers")} className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"> 
-            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> 
-            <span className="hidden sm:inline">Create Manager</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
-        </div>
+        {/* Create Manager button removed (creation disabled). */}
       </header>
       <div className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
         {/* Stats Cards */}
@@ -210,21 +203,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
-              {/* Create Manager Dialog */}
-              <Dialog open={isCreateManagerOpen} onOpenChange={setCreateManagerOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-16 sm:h-20 flex-col gap-1 sm:gap-2 text-xs sm:text-sm">
-                    <UserPlus className="h-4 w-4 sm:h-6 sm:w-6" />
-                    <span className="text-center">Create Manager</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="sr-only">Create Manager</DialogTitle>
-                  </DialogHeader>
-                  <CreateManagerForm onSuccess={() => setCreateManagerOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {/* Create Manager removed (403 from backend) */}
               {/* Send Notification Dialog */}
               <Dialog open={isNotificationOpen} onOpenChange={setNotificationOpen}>
                 <DialogTrigger asChild>

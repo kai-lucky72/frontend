@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, Target, Clock, TrendingUp, UserPlus, Group, MapPin, AlertCircle } from "lucide-react"
+import { Users, Clock, TrendingUp, UserPlus, MapPin, AlertCircle } from "lucide-react"
 import { ChartTooltipContent } from "@/components/ui/chart"
 import { Tooltip, Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -88,11 +88,10 @@ export default function ManagerDashboard() {
     stats: {
       totalAgents: 12,
       activeToday: 8,
-      clientsCollected: 320,
-      groupsCount: 3,
+      groupsCount: 0,
     },
     recentActivities: [
-      { id: 1, agentName: "John Doe", action: "Collected 5 clients", location: "Downtown", status: "success", timestamp: "2024-07-10 09:00" },
+      { id: 1, agentName: "John Doe", action: "Marked attendance", location: "Downtown", status: "success", timestamp: "2024-07-10 09:00" },
       { id: 2, agentName: "Sarah Smith", action: "Marked attendance late", location: "Uptown", status: "warning", timestamp: "2024-07-10 09:15" },
     ],
     attendance: {
@@ -105,16 +104,8 @@ export default function ManagerDashboard() {
       ],
       timeframe: { startTime: "09:00", endTime: "10:00" },
     },
-    groupPerformance: [
-      { name: "Alpha Team", clients: 120 },
-      { name: "Beta Team", clients: 100 },
-      { name: "Gamma Team", clients: 100 },
-    ],
-    individualPerformance: [
-      { name: "John Doe", clients: 120 },
-      { name: "Sarah Smith", clients: 100 },
-      { name: "Mike Johnson", clients: 100 },
-    ],
+    groupPerformance: [],
+    individualPerformance: [],
   }
   const dataToUse = dashboardData && dashboardData.stats ? dashboardData : mockDashboardData;
 
@@ -142,8 +133,6 @@ export default function ManagerDashboard() {
   const statsCards = [
     { name: "Total Agents", value: dataToUse.stats.totalAgents, icon: Users },
     { name: "Active Today", value: dataToUse.stats.activeToday, icon: Clock },
-    { name: "Clients Collected", value: dataToUse.stats.clientsCollected, icon: Target },
-    { name: "Groups", value: dataToUse.stats.groupsCount, icon: Group },
   ]
 
   return (
@@ -300,46 +289,7 @@ export default function ManagerDashboard() {
           </Card>
         </div>
 
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* Group Performance Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Group Performance</CardTitle>
-              <CardDescription>Total clients collected per group</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250} className="min-h-[250px]">
-                <BarChart data={dataToUse.groupPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="clients" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Individual Performance Pie Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Individual Performance</CardTitle>
-              <CardDescription>Client distribution among top agents</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250} className="min-h-[250px]">
-                <PieChart>
-                  <Pie data={dataToUse.individualPerformance} dataKey="clients" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                    {dataToUse.individualPerformance.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
+        
       </main>
     </div>
   )

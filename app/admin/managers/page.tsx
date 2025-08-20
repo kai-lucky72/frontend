@@ -14,18 +14,17 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { UserPlus, Edit, Trash2, Eye, Users, Power, PowerOff, Loader2 } from "lucide-react"
+import { Edit, Trash2, Eye, Users, Power, PowerOff, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { CreateManagerForm } from "@/components/forms/create-manager-form"
 import { Manager } from "@/lib/types"
-import { getManagers, createManager, updateManager, deleteManager } from "@/lib/api"
+import { getManagers, updateManager, deleteManager } from "@/lib/api"
 
 export default function ManagersPage() {
   const [managers, setManagers] = useState<Manager[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedManager, setSelectedManager] = useState<Manager | null>(null)
-  const [activeDialog, setActiveDialog] = useState<"create" | "view" | "edit" | null>(null)
+  const [activeDialog, setActiveDialog] = useState<"view" | "edit" | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [errorField, setErrorField] = useState<string | null>(null)
   const { toast } = useToast()
@@ -57,48 +56,6 @@ export default function ManagersPage() {
         toast({ title: "Manager updated successfully!" })
         setActiveDialog(null)
         setSelectedManager(null)
-      } else {
-        // Only send the six required fields for creation
-        const newManagerData = {
-          firstName: data.firstName || "",
-          lastName: data.lastName || "",
-          email: data.email || "",
-          phoneNumber: data.phoneNumber || "",
-          nationalId: data.nationalId || "",
-          workId: data.workId || "",
-        }
-        try {
-        const newManager = await createManager(newManagerData)
-        setManagers([...managers, newManager])
-        toast({ title: "Manager created successfully!" })
-          setActiveDialog(null)
-          setSelectedManager(null)
-        } catch (err: any) {
-          // Try to extract error message and error field from backend
-          let errorMsg = "Failed to save manager. Please try again."
-          let errorField: string | null = null
-          if (err instanceof Error) {
-            try {
-              const errorJson = JSON.parse((err as any).message)
-              if (errorJson && errorJson.message) {
-                errorMsg = errorJson.message
-                // Try to extract field from message
-                if (errorMsg.toLowerCase().includes("email")) errorField = "email"
-                else if (errorMsg.toLowerCase().includes("phone")) errorField = "phoneNumber"
-                else if (errorMsg.toLowerCase().includes("workid")) errorField = "workId"
-                else if (errorMsg.toLowerCase().includes("nationalid")) errorField = "nationalId"
-              }
-            } catch {}
-            // fallback: if backend sends plain string
-            if (err.message && err.message !== "API request failed") {
-              errorMsg = err.message
-            }
-          }
-          setFormError(errorMsg)
-          setErrorField(errorField)
-          // Do NOT show success toast or close the dialog
-          return
-        }
       }
     } catch (err) {
       setFormError("Failed to save manager. Please try again.")
@@ -149,12 +106,8 @@ export default function ManagersPage() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Manager Management</h1>
-          <p className="text-sm text-muted-foreground">Create and manage system managers</p>
+          <p className="text-sm text-muted-foreground">View and edit managers</p>
         </div>
-        <Button onClick={() => setActiveDialog("create")}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Create Manager
-        </Button>
       </header>
 
       <div className="flex-1 space-y-6 p-6">
@@ -222,7 +175,6 @@ export default function ManagersPage() {
                   <TableRow>
                     <TableHead>First Name</TableHead>
                     <TableHead>Last Name</TableHead>
-                    <TableHead>Work ID</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Last Login</TableHead>
                     <TableHead>Created</TableHead>
@@ -239,7 +191,7 @@ export default function ManagersPage() {
                       <TableCell>
                         <div className="font-medium">{manager.lastName}</div>
                       </TableCell>
-                      <TableCell>{manager.workId}</TableCell>
+                      
                       <TableCell>
                         <Badge
                           variant={manager.status === "active" ? "default" : "secondary"}
@@ -340,8 +292,7 @@ export default function ManagersPage() {
                 <p className="font-medium col-span-1">National ID:</p>
                 <p className="col-span-2">{selectedManager.nationalId}</p>
 
-                <p className="font-medium col-span-1">Work ID:</p>
-                <p className="col-span-2">{selectedManager.workId}</p>
+                {/* Work ID removed */}
 
                 <div className="font-medium col-span-1">Status:</div>
                 <div className="col-span-2">
@@ -359,7 +310,7 @@ export default function ManagersPage() {
                 <p className="col-span-2">{new Date(selectedManager.createdAt).toLocaleDateString()}</p>
 
                 <p className="font-medium col-span-1">Last Login:</p>
-                <p className="col-span-2">{new Date(selectedManager.lastLogin).toLocaleString()}</p>
+                <p className="col-span-2">{selectedManager.lastLogin ? new Date(selectedManager.lastLogin).toLocaleString() : '-'}</p>
               </div>
             </div>
           )}
@@ -383,23 +334,11 @@ export default function ManagersPage() {
               Update the details for {selectedManager?.firstName} {selectedManager?.lastName}.
             </DialogDescription>
           </DialogHeader>
-          <CreateManagerForm onSuccess={handleFormSuccess} initialData={selectedManager} formError={formError} errorField={errorField} />
+          {/* Edit form removed for now; implement when backend update schema is finalized. */}
         </DialogContent>
       </Dialog>
 
-      {/* Create Manager Dialog */}
-      <Dialog
-        open={activeDialog === "create"}
-        onOpenChange={(isOpen) => !isOpen && setActiveDialog(null)}
-      >
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Manager</DialogTitle>
-            <DialogDescription>Enter the details for the new manager.</DialogDescription>
-          </DialogHeader>
-          <CreateManagerForm onSuccess={handleFormSuccess} formError={formError} errorField={errorField} />
-        </DialogContent>
-      </Dialog>
+      {/* Create Manager removed (403 from backend). */}
     </div>
   )
 }

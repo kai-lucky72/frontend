@@ -1,5 +1,5 @@
 export type UserRole = "admin" | "manager" | "agent";
-export type AgentType = "individual" | "sales";
+export type AgentType = "individual" | "sales" | string;
 
 export interface Manager {
   id: string;
@@ -7,12 +7,11 @@ export interface Manager {
   lastName: string;
   email: string;
   phoneNumber: string;
-  nationalId: string;
-  workId: string;
+  nationalId?: string;
   agentsCount: number;
   status: "active" | "inactive";
   createdAt: string;
-  lastLogin: string;
+  lastLogin: string | null;
 }
 
 export interface Agent {
@@ -21,13 +20,11 @@ export interface Agent {
   lastName: string;
   email: string;
   phoneNumber: string;
-  nationalId: string;
-  workId: string;
+  nationalId?: string;
   type: AgentType;
-  group: string;
+  groupName?: string | null;
   status: "active" | "inactive";
-  clientsCollected: number;
-  attendanceRate: number;
+  attendanceRate?: number;
   createdAt: string;
   teamLeader: boolean;
 }
@@ -36,28 +33,16 @@ export interface AuthResponse {
   token: string;
   user: {
     id: string;
-    firstName: string;
-    lastName: string;
+    name: string; // full name
     email: string;
-    workId: string;
+    phoneNumber?: string;
     role: UserRole;
     agentType?: AgentType;
-    groupName?: string;
+    groupName?: string | null;
   };
 }
 
-export interface Client {
-  id: string;
-  name: string;
-  contact: string;
-  address: string;
-  policy: string;
-  amount: number;
-  payingMethod: "cash" | "bank" | "check";
-  status: "pending" | "approved" | "rejected";
-  notes?: string;
-  createdAt: string;
-}
+// Removed Client interface – clients feature deprecated
 
 export interface Activity {
   id: string;
@@ -85,7 +70,6 @@ export interface ManagerDashboardData {
   stats: {
     totalAgents: number;
     activeToday: number;
-    clientsCollected: number;
     groupsCount: number;
   };
   attendance: {
@@ -95,24 +79,23 @@ export interface ManagerDashboardData {
     presentAgents: { name: string; time: string }[];
     timeframe: { startTime: string; endTime: string };
   };
-  groupPerformance: { name: string; clients: number }[];
-  individualPerformance: { name: string; clients: number }[];
+  // performance now attendance-only on backend; keep placeholders if provided
+  groupPerformance?: { name: string; onTimeRate?: number }[];
+  individualPerformance?: { name: string; onTimeRate?: number }[];
   recentActivities: ManagerActivity[];
 }
 
 export interface IndividualAgentDashboardData {
   agentType: "individual";
   attendanceMarked: boolean;
-  clientsThisMonth: number;
-  totalClients: number;
+  // client metrics removed
   recentActivities: Activity[];
 }
 
 export interface SalesAgentDashboardData {
   agentType: "sales";
   attendanceMarked: boolean;
-  clientsThisMonth: number;
-  totalClients: number;
+  // client metrics removed
   groupName: string;
   teamLeader: string;
   recentActivities: Activity[];
@@ -121,18 +104,15 @@ export interface SalesAgentDashboardData {
 export interface TeamMember {
   id: string;
   name: string;
-  clients: number;
   isTeamLeader: boolean;
 }
 
 export interface GroupPerformanceTrend {
   name: string; // e.g., "Week 1"
-  clients: number;
 }
 
 export interface GroupPerformanceData {
   kpis: {
-    totalClients: number;
     teamMembersCount: number;
     teamRank: {
       rank: number;
@@ -144,3 +124,49 @@ export interface GroupPerformanceData {
   teamMembers: TeamMember[];
   recentActivities: Activity[];
 }
+
+// DTOs aligned with backend
+export type AuthRequest = { phoneNumber: string; password: string };
+
+export type UserDTO = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  name?: string;
+  email: string;
+  phoneNumber?: string | null;
+  nationalId?: string | null;
+  role: UserRole;
+  active: boolean;
+  lastLogin?: string | null;
+};
+
+export type AgentListItemDTO = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  nationalId?: string | null;
+  workId?: string | null;
+  type: AgentType;
+  groupName?: string | null;
+  managerName?: string | null;
+};
+
+export type ManagerListItemDTO = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  nationalId?: string | null;
+  workId?: string | null;
+  status: 'active' | 'inactive';
+  lastLogin?: string | null;
+};
+
+export type AttendanceSummary = {
+  present: number;
+  late: number;
+  absent: number;
+  onTimeRate: number;
+};

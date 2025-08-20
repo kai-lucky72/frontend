@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
-import { Users, Target, MapPin, Crown, Search } from "lucide-react"
+import { Users, MapPin, Crown, Search } from "lucide-react"
 
 interface CreateGroupFormProps {
   onSuccess?: () => void
@@ -22,7 +22,6 @@ export function CreateGroupForm({ onSuccess, availableAgents = [] }: CreateGroup
   const [formData, setFormData] = useState({
     groupName: "",
     description: "",
-    targetClients: "",
     sector: "",
     location: "",
     teamLeader: "",
@@ -90,7 +89,6 @@ export function CreateGroupForm({ onSuccess, availableAgents = [] }: CreateGroup
     setFormData({
       groupName: "",
       description: "",
-      targetClients: "",
       sector: "",
       location: "",
       teamLeader: "",
@@ -147,20 +145,7 @@ export function CreateGroupForm({ onSuccess, availableAgents = [] }: CreateGroup
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="targetClients">Monthly Target (Clients)</Label>
-                <div className="relative">
-                  <Target className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="targetClients"
-                    type="number"
-                    value={formData.targetClients}
-                    onChange={(e) => handleInputChange("targetClients", e.target.value)}
-                    placeholder="200"
-                    className="pl-8"
-                  />
-                </div>
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="location">Operating Location</Label>
                 <div className="relative">

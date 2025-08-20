@@ -27,8 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Agent } from "@/lib/types"
-import { CreateAgentForm } from "@/components/forms/create-agent-form"
-import { getAgents, createAgent, updateAgent, deleteAgent } from "@/lib/api"
+import { getAgents, updateAgent, deleteAgent } from "@/lib/api"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -68,11 +67,7 @@ export default function AgentsPage() {
   }, [fetchAgents])
 
   // Fix: Only update state and close dialog in handleCreateSuccess, do not call createAgent again
-  const handleCreateSuccess = (newAgent: Agent) => {
-      setAgents((prev) => [...prev, newAgent])
-      setIsCreateDialogOpen(false)
-      toast({ title: "Agent Created", description: `${newAgent.firstName} ${newAgent.lastName} has been added.` })
-  }
+  // Creation disabled by backend (403). Keep edit/view/delete only.
 
   const handleUpdateSuccess = async (updatedAgent: Agent) => {
     setAgents((prev) => prev.map((agent) => agent.id === updatedAgent.id ? updatedAgent : agent))
@@ -127,11 +122,7 @@ export default function AgentsPage() {
           <h1 className="text-lg sm:text-xl font-semibold truncate">Manage Agents</h1>
           <p className="text-xs sm:text-sm text-muted-foreground truncate">Create, edit, and manage sales agents</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm">
-          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Add Agent</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        {/* Add Agent removed */}
       </header>
 
       <div className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
@@ -158,7 +149,7 @@ export default function AgentsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Agent</TableHead>
-                  <TableHead>Work ID</TableHead>
+                  {/* Work ID removed */}
                   <TableHead>Type</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Status</TableHead>
@@ -181,9 +172,7 @@ export default function AgentsPage() {
                         <div className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{agent.email}</div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{agent.workId}</Badge>
-                    </TableCell>
+                    {/* Work ID column removed */}
                     <TableCell>
                       <Badge variant={agent.type === "sales" ? "default" : "secondary"} className="text-xs capitalize">
                         {agent.type}
@@ -191,7 +180,7 @@ export default function AgentsPage() {
                     </TableCell>
                     <TableCell className="text-xs">
                       {agent.type === "sales" 
-                        ? (agent.group || "No Group") 
+                        ? (agent.groupName || "No Group") 
                         : "None"
                       }
                       </TableCell>
@@ -245,16 +234,7 @@ export default function AgentsPage() {
         )}
       </div>
 
-      {/* Create Agent Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Agent</DialogTitle>
-            <DialogDescription>Add a new sales agent to your team.</DialogDescription>
-          </DialogHeader>
-          <CreateAgentForm onSuccess={handleCreateSuccess} />
-        </DialogContent>
-      </Dialog>
+      {/* Create Agent removed (403 from backend). */}
 
       {/* Edit Agent Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -264,22 +244,6 @@ export default function AgentsPage() {
             <DialogDescription>Update agent information.</DialogDescription>
           </DialogHeader>
           {selectedAgent && (
-            <CreateAgentForm 
-              agent={selectedAgent} 
-              onSuccess={handleUpdateSuccess} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* View Agent Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Agent Details</DialogTitle>
-            <DialogDescription>View agent information and performance.</DialogDescription>
-          </DialogHeader>
-          {selectedAgent && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -287,8 +251,7 @@ export default function AgentsPage() {
                   <p className="text-sm">{selectedAgent.firstName} {selectedAgent.lastName}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Work ID</Label>
-                  <p className="text-sm">{selectedAgent.workId}</p>
+                  {/* Work ID removed */}
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Email</Label>
@@ -314,7 +277,7 @@ export default function AgentsPage() {
                   <>
                     <div>
                       <Label className="text-sm font-medium">Group</Label>
-                      <p className="text-sm">{selectedAgent.group || "No Group"}</p>
+                      <p className="text-sm">{selectedAgent.groupName || "No Group"}</p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Team Leader</Label>
@@ -323,8 +286,69 @@ export default function AgentsPage() {
                   </>
                 )}
                 <div>
-                  <Label className="text-sm font-medium">Clients Collected</Label>
-                  <p className="text-sm">{selectedAgent.clientsCollected}</p>
+                  
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Attendance Rate</Label>
+                  <p className="text-sm">{selectedAgent.attendanceRate}%</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Agent Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Agent Details</DialogTitle>
+            <DialogDescription>View agent information and performance.</DialogDescription>
+          </DialogHeader>
+          {selectedAgent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Name</Label>
+                  <p className="text-sm">{selectedAgent.firstName} {selectedAgent.lastName}</p>
+                </div>
+                <div>
+                  {/* Work ID removed */}
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Email</Label>
+                  <p className="text-sm">{selectedAgent.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Phone</Label>
+                  <p className="text-sm">{selectedAgent.phoneNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Type</Label>
+                  <Badge variant={selectedAgent.type === "sales" ? "default" : "secondary"} className="text-xs capitalize">
+                    {selectedAgent.type}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Badge variant={selectedAgent.status === "active" ? "default" : "destructive"} className="text-xs">
+                    {selectedAgent.status}
+                  </Badge>
+                </div>
+                {selectedAgent.type === "sales" && (
+                  <>
+                    <div>
+                      <Label className="text-sm font-medium">Group</Label>
+                      <p className="text-sm">{selectedAgent.groupName || "No Group"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Team Leader</Label>
+                      <p className="text-sm">{selectedAgent.teamLeader ? "Yes" : "No"}</p>
+                    </div>
+                  </>
+                )}
+                <div>
+                  
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Attendance Rate</Label>

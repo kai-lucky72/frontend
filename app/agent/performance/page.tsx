@@ -7,7 +7,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { TrendingUp, Calendar, Users, CheckCircle2, XCircle } from "lucide-react"
+import { TrendingUp, Calendar, CheckCircle2, XCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -36,16 +36,15 @@ export default function PerformancePage() {
       presentCount: 6,
       lateCount: 1,
       absentCount: 0,
-      totalClients: 25,
       attendanceRate: 85.7,
-      clientCollectionRate: 3.6
+      weeklyAvgHours: 38.5
     },
     chartData: [
-      { date: "2025-07-15", present: 1, late: 0, absent: 0, clients: 3, attendance: true },
-      { date: "2025-07-16", present: 0, late: 1, absent: 0, clients: 5, attendance: true },
-      { date: "2025-07-17", present: 1, late: 0, absent: 0, clients: 4, attendance: true },
-      { date: "2025-07-18", present: 1, late: 0, absent: 0, clients: 6, attendance: true },
-      { date: "2025-07-19", present: 1, late: 0, absent: 0, clients: 7, attendance: true },
+      { date: "2025-07-15", present: 1, late: 0, absent: 0, attendance: true },
+      { date: "2025-07-16", present: 0, late: 1, absent: 0, attendance: true },
+      { date: "2025-07-17", present: 1, late: 0, absent: 0, attendance: true },
+      { date: "2025-07-18", present: 1, late: 0, absent: 0, attendance: true },
+      { date: "2025-07-19", present: 1, late: 0, absent: 0, attendance: true },
     ],
     trends: {
       trends: [
@@ -54,9 +53,9 @@ export default function PerformancePage() {
           present: 6,
           late: 1,
           absent: 0,
-          totalClients: 25,
+  
           attendanceRate: 85.7,
-          clientCollectionRate: 3.6
+
         }
       ],
       weeklyGrowth: 15.0,
@@ -117,7 +116,7 @@ export default function PerformancePage() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">My Performance</h1>
-          <p className="text-sm text-muted-foreground">Review your collection and attendance history</p>
+          <p className="text-sm text-muted-foreground">Review your attendance history</p>
         </div>
         <div className="flex items-center gap-2">
           {isMock ? (
@@ -143,17 +142,7 @@ export default function PerformancePage() {
 
       <div className="flex-1 space-y-6 p-6">
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalClients || 0}</div>
-              <p className="text-xs text-muted-foreground">Clients collected this period</p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
@@ -166,12 +155,12 @@ export default function PerformancePage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">Weekly Avg Hours</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.clientCollectionRate?.toFixed(1) || 0}</div>
-              <p className="text-xs text-muted-foreground">Clients per day average</p>
+              <div className="text-2xl font-bold">{stats?.weeklyAvgHours?.toFixed?.(1) || 0}</div>
+              <p className="text-xs text-muted-foreground">Average hours present per week</p>
             </CardContent>
           </Card>
           <Card>
@@ -235,7 +224,7 @@ export default function PerformancePage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">Work ID</p>
-                  <p className="text-sm text-muted-foreground">{agent?.workId || 'N/A'}</p>
+                  {/* workId removed */}
                 </div>
                 <div>
                   <p className="text-sm font-medium">Email</p>
@@ -274,25 +263,7 @@ export default function PerformancePage() {
         </div>
 
         {/* Performance Charts */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Client Collection Trends</CardTitle>
-              <CardDescription>Daily client collection over the period</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="clients" fill="#3b82f6" name="Clients Collected" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-4 md:grid-cols-1">
           <Card>
             <CardHeader>
               <CardTitle>Attendance Overview</CardTitle>

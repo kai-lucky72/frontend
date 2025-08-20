@@ -18,8 +18,7 @@ interface ManagerFormData {
   lastName: string
   email: string
   phoneNumber: string
-  nationalId: string
-  workId: string
+  nationalId?: string
 }
 
 interface CreateManagerFormProps {
@@ -36,7 +35,6 @@ export function CreateManagerForm({ onSuccess, initialData, formError, errorFiel
     email: "",
     phoneNumber: "",
     nationalId: "",
-    workId: "",
     password: "",
     confirmPassword: "",
   })
@@ -52,7 +50,6 @@ export function CreateManagerForm({ onSuccess, initialData, formError, errorFiel
         email: initialData.email || "",
         phoneNumber: initialData.phoneNumber || "",
         nationalId: initialData.nationalId || "",
-        workId: initialData.workId || "",
         password: "",
         confirmPassword: "",
       })
@@ -92,7 +89,6 @@ export function CreateManagerForm({ onSuccess, initialData, formError, errorFiel
       email: formData.email,
       phoneNumber: formData.phoneNumber,
       nationalId: formData.nationalId,
-      workId: formData.workId,
     }
     if (formData.password) {
       submissionData.password = formData.password
@@ -182,22 +178,8 @@ export function CreateManagerForm({ onSuccess, initialData, formError, errorFiel
 
           {/* Work Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Work & Identity Information</h3>
+            <h3 className="text-lg font-medium">Identity Information</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="workId">Work ID *</Label>
-                <div className="relative">
-                  <IdCard className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="workId"
-                    value={formData.workId}
-                    onChange={(e) => handleInputChange("workId", e.target.value)}
-                    placeholder="MGR001"
-                    className="pl-8"
-                    required
-                  />
-                </div>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="nationalId">National ID *</Label>
                 <div className="relative">

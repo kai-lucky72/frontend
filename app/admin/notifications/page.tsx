@@ -22,8 +22,6 @@ interface Notification {
   recipient: string
   status: "sent" | "pending" | "failed"
   sentAt: string
-  readBy: number
-  totalRecipients: number
 }
 
 export default function NotificationsPage() {
@@ -41,9 +39,11 @@ export default function NotificationsPage() {
       setError(null)
       try {
         const data = await getNotifications({ page: pagination.page, limit: pagination.limit })
-        setNotifications(data.notifications || [])
-        setStats(data.stats || { totalSent: 0, thisWeek: 0, readRate: 0 })
-        setPagination(data.pagination || { page: 1, limit: 10, total: 0 })
+        // Adjust to flexible backend responses
+        const list = Array.isArray(data) ? data : (data.notifications || [])
+        setNotifications(list)
+        setStats((data.stats) ? data.stats : { totalSent: list.length, thisWeek: 0, readRate: 0 })
+        setPagination(data.pagination || { page: 1, limit: 10, total: list.length })
       } catch (err: any) {
         setError(err.message || 'Failed to fetch notifications')
       } finally {
@@ -59,15 +59,13 @@ export default function NotificationsPage() {
     setError(null)
     // Get sender info from localStorage
     const senderRole = localStorage.getItem("userRole") || "admin";
-    const senderWorkId = localStorage.getItem("workId") || "";
     try {
       const response = await sendNotification({
         ...newNotification,
         senderRole,
-        senderWorkId,
       })
       setNewNotification({ title: "", message: "", recipient: "", priority: "normal" })
-      toast({ title: "Notification Sent", description: `Notification sent to ${newNotification.recipient} by ${response.sender?.workId || senderWorkId}` })
+      toast({ title: "Notification Sent", description: `Notification sent to ${newNotification.recipient}` })
       // Refresh notifications
       const data = await getNotifications({ page: pagination.page, limit: pagination.limit })
       setNotifications(data.notifications || [])
@@ -226,20 +224,14 @@ export default function NotificationsPage() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>To: {notification.recipient}</span>
                           <span>Sent: {notification.sentAt}</span>
-                          <span>
-                            Read: {notification.readBy}/{notification.totalRecipients}
-                          </span>
+                          {/* readBy/totalRecipients removed */}
                         </div>
                       </div>
                       <div className="text-right space-y-2">
                         <Badge variant={notification.status === "sent" ? "default" : "secondary"}>
                           {notification.status}
                         </Badge>
-                        <div className="text-sm text-muted-foreground">
-                          {notification.totalRecipients > 0 
-                            ? Math.round((notification.readBy / notification.totalRecipients) * 100)
-                            : 0}% read
-                        </div>
+                        {/* read rate removed */}
                       </div>
                     </div>
                   ))}

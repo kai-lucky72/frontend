@@ -28,7 +28,6 @@ import { getManagerAttendance, updateManagerTimeframe } from "@/lib/api"
 interface AttendanceRecord {
   id: string
   agentName: string
-  workId: string
   date: string
   timeIn: string
   location: string
@@ -148,9 +147,7 @@ export default function AttendancePage() {
   const attendanceTimeframe = stats.timeframe || { startTime: "06:00", endTime: "09:00" }
 
   const filteredRecords = records.filter((record) => {
-    const matchesSearch =
-      record.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.workId.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = record.agentName.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || record.status === statusFilter
 
@@ -367,7 +364,7 @@ export default function AttendancePage() {
                       <TableCell>
                         <div>
                           <div className="font-medium">{record.agentName}</div>
-                          <div className="text-sm text-muted-foreground">{record.workId}</div>
+                          {/* workId removed */}
                         </div>
                       </TableCell>
                       <TableCell>{record.timeIn}</TableCell>

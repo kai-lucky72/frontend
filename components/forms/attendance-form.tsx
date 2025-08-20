@@ -205,7 +205,7 @@ export function AttendanceForm({ onSuccess }: AttendanceFormProps) {
                       <SelectItem value="field">Field Work</SelectItem>
                       <SelectItem value="office">Office Work</SelectItem>
                       <SelectItem value="remote">Remote Work</SelectItem>
-                      <SelectItem value="client-visit">Client Visit</SelectItem>
+      
                       <SelectItem value="training">Training/Meeting</SelectItem>
                     </SelectContent>
                   </Select>
