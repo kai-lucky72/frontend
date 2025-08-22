@@ -14,14 +14,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Send, Bell, Users, MessageSquare, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { getManagerNotifications, sendManagerNotification } from "@/lib/api"
-
-interface Agent {
-  id: string
-  name: string
-  group: string
-  email: string
-}
+import { getManagerNotifications, sendManagerNotification, getAgents } from "@/lib/api"
+import type { Agent } from "@/lib/types"
 
 interface Notification {
   id: string
@@ -33,12 +27,7 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
-  const [agents] = useState<Agent[]>([
-    { id: "1", name: "John Doe", group: "Alpha Team", email: "john.doe@company.com" },
-    { id: "2", name: "Sarah Smith", group: "Alpha Team", email: "sarah.smith@company.com" },
-    { id: "3", name: "Mike Johnson", group: "Individual", email: "mike.johnson@company.com" },
-    { id: "4", name: "Lisa Brown", group: "Beta Team", email: "lisa.brown@company.com" },
-  ])
+  const [agents, setAgents] = useState<Agent[]>([])
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,8 +49,12 @@ export default function NotificationsPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await getManagerNotifications()
-        setNotifications(data?.notifications || data || [])
+        const [notifs, agentsList] = await Promise.all([
+          getManagerNotifications(),
+          getAgents(),
+        ])
+        setNotifications(notifs?.notifications || notifs || [])
+        setAgents(Array.isArray(agentsList) ? agentsList : [])
       } catch (err) {
         setError("Failed to load notifications.")
       } finally {
@@ -128,7 +121,7 @@ export default function NotificationsPage() {
     }
   }
 
-  const groups = [...new Set(agents.map((agent) => agent.group))]
+  const groups = [...new Set(agents.map((agent) => agent.groupName).filter(Boolean))] as string[]
 
   if (loading) {
     return <div className="text-center py-8">Loading notifications...</div>
@@ -252,8 +245,8 @@ export default function NotificationsPage() {
                           />
                           <Label htmlFor={agent.id} className="flex-1 cursor-pointer">
                             <div className="flex justify-between">
-                              <span>{agent.name}</span>
-                              <span className="text-sm text-muted-foreground">{agent.group}</span>
+                              <span>{`${agent.firstName} ${agent.lastName}`}</span>
+                              <span className="text-sm text-muted-foreground">{agent.groupName || "Unassigned"}</span>
                             </div>
                           </Label>
                         </div>
