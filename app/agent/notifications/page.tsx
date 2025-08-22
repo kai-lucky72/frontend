@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { getAgentNotifications } from "@/lib/api"
+import { markNotificationAsRead, markAllNotificationsAsRead } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bell, CheckCircle, AlertTriangle, Info } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function AgentNotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([])
@@ -15,6 +17,42 @@ export default function AgentNotificationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const { toast } = useToast()
+  
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await markNotificationAsRead(notificationId)
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      ))
+      toast({
+        title: "Marked as read",
+        description: "Notification marked as read successfully.",
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.userFriendly || err?.message || "Failed to mark as read.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const result = await markAllNotificationsAsRead()
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      toast({
+        title: "All marked as read",
+        description: `${result.updated} notifications marked as read.`,
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.userFriendly || err?.message || "Failed to mark all as read.",
+        variant: "destructive",
+      })
+    }
+  }
 
   useEffect(() => {
     async function fetchNotifications() {
@@ -22,7 +60,14 @@ export default function AgentNotificationsPage() {
       setError(null)
       try {
         const data = await getAgentNotifications()
-        setNotifications(data?.notifications || data || [])
+        const list = data?.notifications || data || []
+        const normalized = Array.isArray(list)
+          ? list.map((n: any) => ({
+              ...n,
+              from: n?.sender?.name || n?.sender?.role || n?.from || "System",
+            }))
+          : []
+        setNotifications(normalized)
       } catch (err) {
         setError("Failed to load notifications.")
       } finally {
@@ -36,8 +81,9 @@ export default function AgentNotificationsPage() {
     (notif) =>
       (notif.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (notif.message || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (notif.from || "").toLowerCase().includes(searchTerm.toLowerCase())
+      ((notif.sender?.name || notif.sender?.role || notif.from || "").toLowerCase().includes(searchTerm.toLowerCase()))
   )
+  const formatSender = (n: any) => n?.sender?.name || n?.sender?.role || n?.from || "System"
   const unreadCount = notifications.filter((notif) => !notif.read).length
   const urgentCount = notifications.filter((notif) => notif.priority === "urgent").length
 
@@ -91,6 +137,14 @@ export default function AgentNotificationsPage() {
             </CardContent>
           </Card>
         </div>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Notifications</h2>
+          {unreadCount > 0 && (
+            <Button onClick={handleMarkAllAsRead} variant="outline" size="sm">
+              Mark All as Read
+            </Button>
+          )}
+        </div>
         <Tabs defaultValue="all" className="space-y-6">
           <TabsList>
             <TabsTrigger value="all">All Notifications</TabsTrigger>
@@ -131,8 +185,26 @@ export default function AgentNotificationsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground">{notification.message || "(No message)"}</p>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>From: {notification.from || "System"}</span>
+                            <span>From: {formatSender(notification)}</span>
                             <span>{notification.timestamp ? new Date(notification.timestamp).toLocaleString() : "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-2">
+                            {!notification.read && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                className="h-6 text-xs"
+                              >
+                                Mark as Read
+                              </Button>
+                            )}
+                            {notification.read && (
+                              <span className="text-xs text-green-600 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Read
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -168,7 +240,7 @@ export default function AgentNotificationsPage() {
                           </div>
                           <p className="text-sm text-muted-foreground">{notification.message || "(No message)"}</p>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>From: {notification.from || "System"}</span>
+                            <span>From: {formatSender(notification)}</span>
                             <span>{notification.timestamp ? new Date(notification.timestamp).toLocaleString() : "-"}</span>
                           </div>
                         </div>
@@ -207,7 +279,7 @@ export default function AgentNotificationsPage() {
                           </div>
                           <p className="text-sm text-red-700 dark:text-red-300">{notification.message || "(No message)"}</p>
                           <div className="flex items-center justify-between text-xs text-red-600 dark:text-red-400">
-                            <span>From: {notification.from || "System"}</span>
+                            <span>From: {formatSender(notification)}</span>
                             <span>{notification.timestamp ? new Date(notification.timestamp).toLocaleString() : "-"}</span>
                           </div>
                         </div>

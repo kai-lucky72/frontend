@@ -17,57 +17,12 @@ export default function PerformancePage() {
   const [performanceData, setPerformanceData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isMock, setIsMock] = useState(false)
+  // remove mock toggle
   const { toast } = useToast()
 
-  // Mock data for demo purposes - updated to match backend structure
-  const mockPerformanceData = {
-    agent: {
-      id: "agt-028",
-      firstName: "lucky",
-      lastName: "kail",
-      email: "kagabolucky723@gmail.com",
-      workId: "AGT007",
-      type: "sales",
-      status: "active"
-    },
-    stats: {
-      totalAttendanceDays: 7,
-      presentCount: 6,
-      lateCount: 1,
-      absentCount: 0,
-      attendanceRate: 85.7,
-      weeklyAvgHours: 38.5
-    },
-    chartData: [
-      { date: "2025-07-15", present: 1, late: 0, absent: 0, attendance: true },
-      { date: "2025-07-16", present: 0, late: 1, absent: 0, attendance: true },
-      { date: "2025-07-17", present: 1, late: 0, absent: 0, attendance: true },
-      { date: "2025-07-18", present: 1, late: 0, absent: 0, attendance: true },
-      { date: "2025-07-19", present: 1, late: 0, absent: 0, attendance: true },
-    ],
-    trends: {
-      trends: [
-        {
-          name: "Current Period",
-          present: 6,
-          late: 1,
-          absent: 0,
-  
-          attendanceRate: 85.7,
-
-        }
-      ],
-      weeklyGrowth: 15.0,
-      monthlyGrowth: 25.0
-    },
-    period: "weekly",
-    startDate: "2025-07-15",
-    endDate: "2025-07-21"
-  };
+  // remove mock data
 
   useEffect(() => {
-    if (!isMock) {
       const fetchPerformance = async () => {
         setLoading(true)
         setError(null)
@@ -87,19 +42,9 @@ export default function PerformancePage() {
         }
       }
       fetchPerformance()
-    }
-  }, [selectedPeriod, isMock])
+  }, [selectedPeriod])
 
-  const handleAddMockData = () => {
-    setPerformanceData(mockPerformanceData)
-    setIsMock(true)
-    setError(null)
-    setLoading(false)
-  }
-
-  const handleRemoveMockData = () => {
-    setIsMock(false)
-  }
+  // removed mock toggles
 
   if (loading) return <div className="p-8 text-center">Loading performance data...</div>
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>
@@ -119,15 +64,6 @@ export default function PerformancePage() {
           <p className="text-sm text-muted-foreground">Review your attendance history</p>
         </div>
         <div className="flex items-center gap-2">
-          {isMock ? (
-            <Button variant="destructive" size="sm" onClick={handleRemoveMockData}>
-              Remove Mock Data
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleAddMockData}>
-              Add Mock Data
-            </Button>
-          )}
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-32">
               <SelectValue />

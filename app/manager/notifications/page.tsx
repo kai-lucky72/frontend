@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { Send, Bell, Users, MessageSquare, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getManagerNotifications, sendManagerNotification, getAgents } from "@/lib/api"
+import { markNotificationAsRead, markAllNotificationsAsRead } from "@/lib/api"
 import type { Agent } from "@/lib/types"
 
 interface Notification {
@@ -43,6 +44,53 @@ export default function NotificationsPage() {
   })
 
   const { toast } = useToast()
+  
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await markNotificationAsRead(notificationId)
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      ))
+      toast({
+        title: "Marked as read",
+        description: "Notification marked as read successfully.",
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.userFriendly || err?.message || "Failed to mark as read.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const result = await markAllNotificationsAsRead()
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      toast({
+        title: "All marked as read",
+        description: `${result.updated} notifications marked as read.`,
+      })
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.userFriendly || err?.message || "Failed to mark all as read.",
+        variant: "destructive",
+      })
+    }
+  }
+  // Derived stats
+  const thisWeekCount = notifications.filter((n: any) => {
+    const ts = new Date((n as any).sentAt || (n as any).timestamp || 0).getTime()
+    if (!ts) return false
+    const now = Date.now()
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+    return now - ts <= sevenDaysMs
+  }).length
+  const readRate = notifications.length > 0
+    ? Math.round((notifications.filter((n: any) => (n as any).read).length / notifications.length) * 100)
+    : 0
 
   useEffect(() => {
     async function fetchData() {
@@ -236,6 +284,9 @@ export default function NotificationsPage() {
 
                   {newNotification.recipientType === "individual" && (
                     <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-4">
+                      {agents.length === 0 && (
+                        <div className="text-sm text-muted-foreground">No agents found.</div>
+                      )}
                       {agents.map((agent) => (
                         <div key={agent.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -281,7 +332,7 @@ export default function NotificationsPage() {
                   <MessageSquare className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">5</div>
+                  <div className="text-2xl font-bold">{thisWeekCount}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -290,7 +341,7 @@ export default function NotificationsPage() {
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">85%</div>
+                  <div className="text-2xl font-bold">{readRate}%</div>
                 </CardContent>
               </Card>
               <Card>
@@ -308,6 +359,13 @@ export default function NotificationsPage() {
               <CardHeader>
                 <CardTitle>Notification History</CardTitle>
                 <CardDescription>View all sent notifications and their status</CardDescription>
+                <div className="flex justify-end">
+                  {notifications.filter((n: any) => !(n as any).read).length > 0 && (
+                    <Button onClick={handleMarkAllAsRead} variant="outline" size="sm">
+                      Mark All as Read
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -335,6 +393,24 @@ export default function NotificationsPage() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span>To: {Array.isArray(notification.recipients) ? notification.recipients.join(", ") : "-"}</span>
                             <span>Sent: {notification.sentAt}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-2">
+                            {!(notification as any).read && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                className="h-6 text-xs"
+                              >
+                                Mark as Read
+                              </Button>
+                            )}
+                            {(notification as any).read && (
+                              <span className="text-xs text-green-600 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                Read
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right space-y-2">

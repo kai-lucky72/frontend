@@ -26,12 +26,11 @@ export default function AgentDashboard() {
   const [dashboardData, setDashboardData] = useState<IndividualAgentDashboardData | SalesAgentDashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isMock, setIsMock] = useState(false)
+  // remove mock toggle
   const { isAttendanceMarked, attendanceTime, refreshAttendanceStatus } = useAttendance()
   const { toast } = useToast()
 
   useEffect(() => {
-    if (!isMock) {
       const fetchDashboardData = async () => {
         try {
           setIsLoading(true)
@@ -48,8 +47,7 @@ export default function AgentDashboard() {
         }
       }
       fetchDashboardData()
-    }
-  }, [isMock])
+  }, [])
 
   const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState(false)
   const [attendanceDetails, setAttendanceDetails] = useState({ location: "", sector: "" })
@@ -230,26 +228,7 @@ export default function AgentDashboard() {
     </Dialog>
   )
 
-  // Mock data for both agent types
-  const mockIndividualData: IndividualAgentDashboardData = {
-    agentType: "individual",
-    attendanceMarked: false,
-    recentActivities: [
-      { id: "1", description: "Marked attendance", timestamp: "2024-07-10 09:00" },
-      { id: "2", description: "Marked attendance", timestamp: "2024-07-10 08:30" },
-    ],
-  };
-  const mockSalesData: SalesAgentDashboardData = {
-    agentType: "sales",
-    attendanceMarked: true,
-    groupName: "PrimeoSummit",
-    teamLeader: "lucky kail",
-    recentActivities: [
-      { id: "1", description: "Marked attendance", timestamp: "2024-07-10 09:00" },
-      { id: "2", description: "Group meeting", timestamp: "2024-07-09 15:00" },
-    ],
-  };
-  const dataToUse = dashboardData;
+  const dataToUse = dashboardData as any;
 
   if (isLoading) {
     return <DashboardLoadingSkeleton />;
@@ -278,17 +257,7 @@ export default function AgentDashboard() {
           {getAttendanceButton()}
           
         </div>
-        <div className="flex items-center gap-2">
-          {isMock ? (
-            <Button variant="destructive" size="sm" onClick={handleRemoveMockData}>
-              Remove Mock Data
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleAddMockData}>
-              Add Mock Data
-            </Button>
-          )}
-        </div>
+        <div className="flex items-center gap-2"></div>
       </header>
       {error && (
         <div className="p-4 text-center text-red-500 bg-red-50 border-b text-sm">{error}</div>

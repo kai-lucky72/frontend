@@ -448,6 +448,20 @@ export const getAgentNotifications = async (params: { page?: number; limit?: num
   return await fetchApi(`/agent/notifications${qs}`);
 };
 
+// Mark single notification as read
+export const markNotificationAsRead = async (id: string): Promise<void> => {
+  return fetchApi(`/notifications/${id}/read`, {
+    method: 'POST',
+  });
+};
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async (): Promise<{ updated: number }> => {
+  return fetchApi('/notifications/read-all', {
+    method: 'POST',
+  });
+};
+
 export const getAgentAttendanceTimeframe = async (): Promise<{ startTime: string; endTime: string }> => {
   return fetchApi('/agent/attendance/timeframe');
 };

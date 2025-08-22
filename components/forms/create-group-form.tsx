@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { Users, MapPin, Crown, Search } from "lucide-react"
+import { getAgents } from "@/lib/api"
 
 interface CreateGroupFormProps {
   onSuccess?: () => void
@@ -31,16 +32,29 @@ export function CreateGroupForm({ onSuccess, availableAgents = [] }: CreateGroup
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  const defaultAgents = [
-    { id: "1", name: "John Smith", workId: "AGT001" },
-    { id: "2", name: "Sarah Johnson", workId: "AGT002" },
-    { id: "3", name: "Mike Wilson", workId: "AGT003" },
-    { id: "4", name: "Lisa Brown", workId: "AGT004" },
-    { id: "5", name: "Tom Davis", workId: "AGT005" },
-    { id: "6", name: "Emma White", workId: "AGT006" },
-  ]
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; workId: string }>>(availableAgents)
 
-  const agents = availableAgents.length > 0 ? availableAgents : defaultAgents
+  useEffect(() => {
+    let mounted = true
+    const loadAgents = async () => {
+      try {
+        const list = await getAgents()
+        if (!mounted) return
+        const formatted = (Array.isArray(list) ? list : []).map((a: any) => ({
+          id: String(a.id),
+          name: `${a.firstName} ${a.lastName}`,
+          workId: a.workId || a.nationalId || String(a.id),
+        }))
+        setAgents(formatted)
+      } catch (_) {
+        setAgents([])
+      }
+    }
+    if (availableAgents.length === 0) {
+      loadAgents()
+    }
+    return () => { mounted = false }
+  }, [availableAgents])
 
   const filteredAgents = agents.filter(
     (agent) =>

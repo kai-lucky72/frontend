@@ -28,7 +28,7 @@ export default function ManagerDashboard() {
   const [dashboardData, setDashboardData] = useState<ManagerDashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isMock, setIsMock] = useState(false)
+  // removed mock toggle
 
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [tempTimeframe, setTempTimeframe] = useState({ startTime: "", endTime: "" })
@@ -74,40 +74,7 @@ export default function ManagerDashboard() {
     }
   }
 
-  const handleAddMockData = () => {
-    setDashboardData(mockDashboardData)
-    setIsMock(true)
-  }
-  const handleRemoveMockData = () => {
-    fetchDashboardData()
-    setIsMock(false)
-  }
-
-  // Mock data fallback
-  const mockDashboardData = {
-    stats: {
-      totalAgents: 12,
-      activeToday: 8,
-      groupsCount: 0,
-    },
-    recentActivities: [
-      { id: 1, agentName: "John Doe", action: "Marked attendance", location: "Downtown", status: "success", timestamp: "2024-07-10 09:00" },
-      { id: 2, agentName: "Sarah Smith", action: "Marked attendance late", location: "Uptown", status: "warning", timestamp: "2024-07-10 09:15" },
-    ],
-    attendance: {
-      rate: 85,
-      presentCount: 8,
-      absentCount: 4,
-      presentAgents: [
-        { name: "John Doe", time: "08:30" },
-        { name: "Sarah Smith", time: "08:45" },
-      ],
-      timeframe: { startTime: "09:00", endTime: "10:00" },
-    },
-    groupPerformance: [],
-    individualPerformance: [],
-  }
-  const dataToUse = dashboardData && dashboardData.stats ? dashboardData : mockDashboardData;
+  // removed mock fallback; rely on real data only
 
   if (isLoading) {
     return <DashboardSkeleton />
@@ -131,8 +98,8 @@ export default function ManagerDashboard() {
   }
 
   const statsCards = [
-    { name: "Total Agents", value: dataToUse.stats.totalAgents, icon: Users },
-    { name: "Active Today", value: dataToUse.stats.activeToday, icon: Clock },
+    { name: "Total Agents", value: dashboardData.stats.totalAgents, icon: Users },
+    { name: "Active Today", value: dashboardData.stats.activeToday, icon: Clock },
   ]
 
   return (
@@ -145,15 +112,6 @@ export default function ManagerDashboard() {
           <p className="text-sm text-muted-foreground">Manage your agents and monitor performance</p>
         </div>
         <div className="flex items-center gap-2">
-          {isMock ? (
-            <Button variant="destructive" size="sm" onClick={handleRemoveMockData}>
-              Remove Mock Data
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleAddMockData}>
-              Add Mock Data
-            </Button>
-          )}
           <Button size="sm" onClick={() => router.push("/manager/agents")}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Agent
@@ -223,17 +181,17 @@ export default function ManagerDashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Attendance Rate</span>
-                  <span className="text-xl sm:text-2xl font-bold text-green-600">{dataToUse.attendance.rate.toFixed(0)}%</span>
+                  <span className="text-xl sm:text-2xl font-bold text-green-600">{dashboardData.attendance.rate.toFixed(0)}%</span>
                 </div>
-                <Progress value={dataToUse.attendance.rate} className="h-3" />
+                <Progress value={dashboardData.attendance.rate} className="h-3" />
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4">
                   <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950">
-                    <div className="text-xl sm:text-2xl font-bold text-green-600">{dataToUse.attendance.presentCount}</div>
+                    <div className="text-xl sm:text-2xl font-bold text-green-600">{dashboardData.attendance.presentCount}</div>
                     <div className="text-xs text-muted-foreground">Present</div>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950">
-                    <div className="text-xl sm:text-2xl font-bold text-red-600">{dataToUse.attendance.absentCount}</div>
+                    <div className="text-xl sm:text-2xl font-bold text-red-600">{dashboardData.attendance.absentCount}</div>
                     <div className="text-xs text-muted-foreground">Absent</div>
                   </div>
                 </div>
@@ -243,8 +201,8 @@ export default function ManagerDashboard() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Present Agents</h4>
                   <ul className="space-y-2 text-sm max-h-24 overflow-y-auto">
-                    {dataToUse.attendance.presentAgents.length > 0 ? (
-                      dataToUse.attendance.presentAgents.map((agent) => (
+                    {dashboardData.attendance.presentAgents.length > 0 ? (
+                      dashboardData.attendance.presentAgents.map((agent) => (
                         <li key={agent.name} className="flex justify-between">
                           <span className="truncate">{agent.name}</span>
                           <span className="text-muted-foreground flex-shrink-0 ml-2">{agent.time}</span>
@@ -260,7 +218,7 @@ export default function ManagerDashboard() {
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full bg-transparent !mt-6 h-10 sm:h-9">
                       <Clock className="h-4 w-4 mr-2" />
-                      <span className="truncate">Update Timeframe ({dataToUse.attendance.timeframe.startTime} - {dataToUse.attendance.timeframe.endTime})</span>
+                      <span className="truncate">Update Timeframe ({dashboardData.attendance.timeframe.startTime} - {dashboardData.attendance.timeframe.endTime})</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px] w-[95vw]">
