@@ -12,7 +12,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { getAgents, getManagerAgentClients, syncManagerAgentClients } from "@/lib/api"
+import { getAgents, getManagerAgentClients } from "@/lib/api"
 import type { Agent } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -89,8 +89,8 @@ export default function ManagerPerformancePage() {
   }, [])
 
   const fetchClientsForAgent = async (agentId: string | number) => {
-    const data = await getManagerAgentClients(agentId, { from: range.from, to: range.to })
-    return Array.isArray(data) ? data : []
+    const res = await getManagerAgentClients(agentId, { from: range.from, to: range.to, page: 1, limit: 50 })
+    return Array.isArray((res as any)?.items) ? (res as any).items : []
   }
 
   const handleOpenClients = async (agent: Agent) => {
@@ -107,29 +107,16 @@ export default function ManagerPerformancePage() {
     }
   }
 
-  const handleSyncAgent = async (agent: Agent) => {
-    try {
-      await syncManagerAgentClients(agent.id)
-      toast({ title: "Sync started", description: `Client sync triggered for ${agent.firstName} ${agent.lastName}.` })
-      if (selectedAgent && selectedAgent.id === agent.id && isClientsDialogOpen) {
-        setClientsLoading(true)
-        const data = await fetchClientsForAgent(agent.id)
-        setClients(data)
-        setClientsLoading(false)
-      }
-    } catch (e: any) {
-      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
-    }
-  }
+  // Sync removed per backend guidance (external-only mode)
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Agent Performance</h1>
-          <p className="text-sm text-muted-foreground">Period: {period.replace("_", " ")} • {range.from} → {range.to}</p>
+          <p className="text-sm opacity-90">Period: {period.replace("_", " ")} • {range.from} → {range.to}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
@@ -147,15 +134,15 @@ export default function ManagerPerformancePage() {
       </header>
 
       <div className="flex-1 space-y-6 p-6">
-        <Card>
+        <Card className="border border-primary/15">
           <CardHeader>
-            <CardTitle>Agents</CardTitle>
+            <CardTitle className="text-primary">Agents</CardTitle>
           </CardHeader>
           <CardContent>
             {loading && <div className="text-center py-8">Loading...</div>}
             {error && <div className="text-center py-8 text-red-500">{error}</div>}
             {!loading && !error && (
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-md border border-primary/15 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -167,8 +154,8 @@ export default function ManagerPerformancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {agents.map((a) => (
-                      <TableRow key={a.id}>
+                    {agents.map((a, index) => (
+                      <TableRow key={`${String(a.id)}-${a.email || "noemail"}-${index}`}>
                         <TableCell>
                           <div className="font-medium">{a.firstName} {a.lastName}</div>
                           <div className="text-xs text-muted-foreground">{a.email}</div>
@@ -179,7 +166,6 @@ export default function ManagerPerformancePage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleOpenClients(a)}>Get Clients</Button>
-                            <Button size="sm" onClick={() => handleSyncAgent(a)}>Sync Clients</Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -191,7 +177,6 @@ export default function ManagerPerformancePage() {
           </CardContent>
         </Card>
       </div>
-
       <Dialog open={isClientsDialogOpen} onOpenChange={setIsClientsDialogOpen}>
         <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -220,8 +205,8 @@ export default function ManagerPerformancePage() {
                       <TableCell colSpan={5} className="text-center text-muted-foreground">No clients found.</TableCell>
                     </TableRow>
                   ) : (
-                    clients.map((c: any) => (
-                      <TableRow key={c.id}>
+                    clients.map((c: any, idx: number) => (
+                      <TableRow key={`${String(c?.id ?? "noid")}-${String(c?.proposalNumber ?? "nopn")}-${String(c?.proposalDate ?? "nodate")}-${idx}`}>
                         <TableCell>{c.proposalNumber}</TableCell>
                         <TableCell>{c.customerName}</TableCell>
                         <TableCell>{c.proposalDate ? new Date(c.proposalDate).toLocaleDateString() : "-"}</TableCell>

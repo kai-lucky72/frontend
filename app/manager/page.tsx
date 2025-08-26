@@ -32,6 +32,8 @@ export default function ManagerDashboard() {
 
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [tempTimeframe, setTempTimeframe] = useState({ startTime: "", endTime: "" })
+  const [activitiesPage, setActivitiesPage] = useState<number>(1)
+  const ACTIVITIES_LIMIT = 5
 
   const fetchDashboardData = async () => {
     try {
@@ -104,12 +106,12 @@ export default function ManagerDashboard() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Manager Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Manage your agents and monitor performance</p>
+          <p className="text-sm opacity-90">Manage your agents and monitor performance</p>
         </div>
         <div className="flex items-center gap-2"></div>
       </header>
@@ -118,10 +120,10 @@ export default function ManagerDashboard() {
         {/* Stats Cards */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
           {statsCards.map((stat) => (
-            <Card key={stat.name}>
+            <Card key={stat.name} className="border border-primary/15 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium">{stat.name}</CardTitle>
-                <stat.icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                <CardTitle className="text-xs sm:text-sm font-medium text-primary">{stat.name}</CardTitle>
+                <stat.icon className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="text-lg sm:text-2xl font-bold">{stat.value}</div>
@@ -133,21 +135,23 @@ export default function ManagerDashboard() {
 
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Recent Activities */}
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader>
-              <CardTitle>Recent Agent Activities</CardTitle>
+              <CardTitle className="text-primary">Recent Agent Activities</CardTitle>
               <CardDescription>Latest updates from your team</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 sm:space-y-4">
                 {dashboardData.recentActivities.length > 0 ? (
-                  dashboardData.recentActivities.map((activity) => (
-                    <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border gap-2">
+                  dashboardData.recentActivities
+                    .slice((activitiesPage - 1) * ACTIVITIES_LIMIT, activitiesPage * ACTIVITIES_LIMIT)
+                    .map((activity) => (
+                    <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-primary/15 gap-2">
                       <div className="space-y-1 min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{activity.agentName}</p>
                         <p className="text-xs text-muted-foreground truncate">{activity.action}</p>
                         <div className="flex items-center text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0 text-primary" />
                           <span className="truncate">{activity.location}</span>
                         </div>
                       </div>
@@ -162,14 +166,25 @@ export default function ManagerDashboard() {
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">No recent activities.</p>
                 )}
+                {dashboardData.recentActivities.length > ACTIVITIES_LIMIT && (
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="text-xs text-muted-foreground">
+                      Page {activitiesPage} of {Math.max(1, Math.ceil(dashboardData.recentActivities.length / ACTIVITIES_LIMIT))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))} disabled={activitiesPage <= 1}>Prev</Button>
+                      <Button variant="outline" size="sm" onClick={() => setActivitiesPage((p) => Math.min(Math.ceil(dashboardData.recentActivities.length / ACTIVITIES_LIMIT), p + 1))} disabled={activitiesPage >= Math.ceil(dashboardData.recentActivities.length / ACTIVITIES_LIMIT)}>Next</Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Attendance Overview */}
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader>
-              <CardTitle>Today's Attendance</CardTitle>
+              <CardTitle className="text-primary">Today's Attendance</CardTitle>
               <CardDescription>Current attendance status and list of present agents</CardDescription>
             </CardHeader>
             <CardContent>

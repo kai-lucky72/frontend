@@ -53,6 +53,8 @@ export default function AttendancePage() {
   const [timeState, setTimeState] = useState({ isActive: false, isWarning: false, isExpired: false })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [historyPage, setHistoryPage] = useState<number>(1)
+  const HISTORY_LIMIT = 5
 
   useEffect(() => {
     const fetchAttendance = async () => {
@@ -348,7 +350,9 @@ export default function AttendancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {attendanceRecords.map((record) => (
+              {attendanceRecords
+                .slice((historyPage - 1) * HISTORY_LIMIT, historyPage * HISTORY_LIMIT)
+                .map((record) => (
                 <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 font-medium"><CalendarIcon className="h-4 w-4 text-muted-foreground" />{record.date} <span className="text-sm text-muted-foreground font-normal">at {record.time}</span></div>
@@ -358,6 +362,30 @@ export default function AttendancePage() {
                 </div>
               ))}
             </div>
+            {/* Pagination controls for history */}
+            {attendanceRecords.length > HISTORY_LIMIT && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {historyPage} of {Math.max(1, Math.ceil(attendanceRecords.length / HISTORY_LIMIT))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    disabled={historyPage <= 1}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setHistoryPage((p) => Math.min(Math.max(1, Math.ceil(attendanceRecords.length / HISTORY_LIMIT)), p + 1))}
+                    disabled={historyPage >= Math.ceil(attendanceRecords.length / HISTORY_LIMIT)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

@@ -448,36 +448,45 @@ export const getAgentNotifications = async (params: { page?: number; limit?: num
   return await fetchApi(`/agent/notifications${qs}`);
 };
 
-// Agent clients API
-export const syncAgentClients = async (): Promise<{ status: string }> => {
-  return fetchApi('/agent/clients/sync', { method: 'POST' });
-};
-
-export const getAgentClients = async (params: { from?: string; to?: string } = {}): Promise<any[]> => {
+// Agent clients API (paginated)
+export const getAgentClients = async (params: { from?: string; to?: string; page?: number; limit?: number } = {}): Promise<{ items: any[]; page: number; limit: number; total: number }> => {
   const query = new URLSearchParams();
   if (params.from) query.append('from', params.from);
   if (params.to) query.append('to', params.to);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
   const qs = query.toString() ? `?${query.toString()}` : '';
   return fetchApi(`/agent/clients${qs}`);
 };
 
-// Manager -> agent clients API
-export const syncManagerAgentClients = async (agentId: string | number): Promise<{ status: string }> => {
-  const numericId = extractNumericId(String(agentId));
-  return fetchApi(`/manager/agents/${numericId}/clients/sync`, { method: 'POST' });
+// Agent recent activities (paginated)
+export const getAgentRecentActivities = async (params: { from?: string; page?: number; limit?: number } = {}): Promise<{ items: any[]; page: number; limit: number; total: number }> => {
+  const query = new URLSearchParams();
+  if (params.from) query.append('from', params.from);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/agent/recent-activities${qs}`);
 };
 
+// Manager -> agent clients API (paginated)
 export const getManagerAgentClients = async (
   agentId: string | number,
-  params: { from?: string; to?: string } = {}
-): Promise<any[]> => {
+  params: { from?: string; to?: string; page?: number; limit?: number } = {}
+): Promise<{ items: any[]; page: number; limit: number; total: number }> => {
   const numericId = extractNumericId(String(agentId));
   const query = new URLSearchParams();
   if (params.from) query.append('from', params.from);
   if (params.to) query.append('to', params.to);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.limit) query.append('limit', params.limit.toString());
   const qs = query.toString() ? `?${query.toString()}` : '';
   return fetchApi(`/manager/agents/${numericId}/clients${qs}`);
 };
+
+// NOTE: sync endpoints removed per backend update (external-only mode)
+// export const syncAgentClients = async (): Promise<{ status: string }> => { ... }
+// export const syncManagerAgentClients = async (...) => { ... }
 
 // Mark single notification as read
 export const markNotificationAsRead = async (id: string): Promise<void> => {

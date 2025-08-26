@@ -181,12 +181,12 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Agent Notifications</h1>
-          <p className="text-sm text-muted-foreground">Send notifications to your agents</p>
+          <p className="text-sm opacity-90">Send notifications to your agents</p>
         </div>
       </header>
 
@@ -198,7 +198,7 @@ export default function NotificationsPage() {
           </TabsList>
 
           <TabsContent value="send" className="space-y-6">
-            <Card>
+            <Card className="border border-primary/15">
               <CardHeader>
                 <CardTitle>Send New Notification</CardTitle>
                 <CardDescription>Send notifications to your agents</CardDescription>
@@ -283,7 +283,7 @@ export default function NotificationsPage() {
                   )}
 
                   {newNotification.recipientType === "individual" && (
-                    <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-4">
+                    <div className="space-y-2 max-h-48 overflow-y-auto border border-primary/20 rounded-lg p-4">
                       {agents.length === 0 && (
                         <div className="text-sm text-muted-foreground">No agents found.</div>
                       )}
@@ -317,36 +317,36 @@ export default function NotificationsPage() {
           <TabsContent value="history" className="space-y-6">
             {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-4">
-              <Card>
+              <Card className="border border-primary/15">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Sent</CardTitle>
-                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-primary">Total Sent</CardTitle>
+                  <Bell className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{notifications.length}</div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border border-primary/15">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">This Week</CardTitle>
+                  <CardTitle className="text-sm font-medium text-primary">This Week</CardTitle>
                   <MessageSquare className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{thisWeekCount}</div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border border-primary/15">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Read Rate</CardTitle>
+                  <CardTitle className="text-sm font-medium text-primary">Read Rate</CardTitle>
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{readRate}%</div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border border-primary/15">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Recipients</CardTitle>
+                  <CardTitle className="text-sm font-medium text-primary">Recipients</CardTitle>
                   <Users className="h-4 w-4 text-purple-600" />
                 </CardHeader>
                 <CardContent>
@@ -355,7 +355,7 @@ export default function NotificationsPage() {
               </Card>
             </div>
 
-            <Card>
+            <Card className="border border-primary/15">
               <CardHeader>
                 <CardTitle>Notification History</CardTitle>
                 <CardDescription>View all sent notifications and their status</CardDescription>

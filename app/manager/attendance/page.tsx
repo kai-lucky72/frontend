@@ -156,12 +156,12 @@ export default function AttendancePage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Attendance Tracking</h1>
-          <p className="text-sm text-muted-foreground">Monitor agent attendance and punctuality</p>
+          <p className="text-sm opacity-90">Monitor agent attendance and punctuality</p>
         </div>
         <div className="flex items-center gap-2"></div>
       </header>
@@ -169,19 +169,19 @@ export default function AttendancePage() {
       <div className="flex-1 space-y-6 p-6">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border border-primary/15 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Attendance Rate</CardTitle>
+              <Clock className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{attendanceRate}%</div>
               <div className="text-xs text-muted-foreground">Today's overall rate</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Present</CardTitle>
+              <CardTitle className="text-sm font-medium text-primary">Present</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -189,9 +189,9 @@ export default function AttendancePage() {
               <div className="text-xs text-muted-foreground">On time arrivals</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Late</CardTitle>
+              <CardTitle className="text-sm font-medium text-primary">Late</CardTitle>
               <AlertCircle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
@@ -199,9 +199,9 @@ export default function AttendancePage() {
               <div className="text-xs text-muted-foreground">Late arrivals</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Absent</CardTitle>
+              <CardTitle className="text-sm font-medium text-primary">Absent</CardTitle>
               <XCircle className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
@@ -212,10 +212,10 @@ export default function AttendancePage() {
         </div>
 
         {/* Attendance Timeframe Card */}
-        <Card>
+        <Card className="border border-primary/15">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 text-primary" />
               Attendance Timeframe Settings
             </CardTitle>
             <CardDescription>Configure the time window for attendance tracking</CardDescription>
@@ -225,7 +225,7 @@ export default function AttendancePage() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Current Attendance Window</p>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-sm">
+                  <Badge variant="outline" className="text-sm border-primary/40 text-primary">
                     {attendanceTimeframe.startTime} - {attendanceTimeframe.endTime}
                   </Badge>
                   <span className="text-xs text-muted-foreground">Agents must mark attendance within this window</span>
@@ -234,7 +234,7 @@ export default function AttendancePage() {
 
               <Dialog open={isTimeframeDialogOpen} onOpenChange={handleTimeframeDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">
+                  <Button>
                     <Clock className="h-4 w-4 mr-2" />
                     Update Timeframe
                   </Button>
@@ -272,7 +272,7 @@ export default function AttendancePage() {
                         className="col-span-3"
                       />
                     </div>
-                    <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                    <div className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg">
                       <p className="font-medium mb-1">Note:</p>
                       <p>
                         This timeframe will apply to all agents. Attendance marked outside this window will be
@@ -296,7 +296,7 @@ export default function AttendancePage() {
 
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Calendar */}
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader>
               <CardTitle>Calendar</CardTitle>
               <CardDescription>Select date to view attendance</CardDescription>
@@ -313,7 +313,7 @@ export default function AttendancePage() {
           </Card>
 
           {/* Attendance Records */}
-          <Card className="lg:col-span-3">
+          <Card className="lg:col-span-3 border border-primary/15">
             <CardHeader>
               <CardTitle>Today's Attendance</CardTitle>
               <CardDescription>Real-time attendance tracking for all agents</CardDescription>
@@ -322,7 +322,7 @@ export default function AttendancePage() {
               {/* Search and Filter */}
               <div className="flex gap-4 mb-6">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-primary" />
                   <Input
                     placeholder="Search agents..."
                     value={searchTerm}

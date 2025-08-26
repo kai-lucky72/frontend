@@ -319,6 +319,8 @@ export default function AgentDashboard() {
 
 const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data }) => {
   const { recentActivities } = data as any
+  const [page, setPage] = useState<number>(1)
+  const LIMIT = 5
 
   return (
     <div className="space-y-6">
@@ -332,7 +334,9 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {recentActivities.map((activity: Activity) => (
+            {recentActivities
+              .slice((page - 1) * LIMIT, page * LIMIT)
+              .map((activity: Activity) => (
               <li key={activity.id} className="flex items-center justify-between rounded-md border p-3">
                 <div className="font-medium">{activity.description}</div>
                 <div className="text-sm text-muted-foreground">{activity.timestamp}</div>
@@ -340,6 +344,15 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
             ))}
             {recentActivities.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No recent activities.</p>}
           </ul>
+          {recentActivities.length > LIMIT && (
+            <div className="flex items-center justify-between mt-3">
+              <div className="text-xs text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(recentActivities.length / LIMIT))}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -349,6 +362,8 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
 const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
   const { groupName, teamLeader, recentActivities } = data as any
   const [userName, setUserName] = useState("Sales Agent")
+  const [page, setPage] = useState<number>(1)
+  const LIMIT = 5
 
   useEffect(() => {
     const name = localStorage.getItem("userName")
@@ -369,7 +384,9 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {recentActivities.map((activity: Activity) => (
+            {recentActivities
+              .slice((page - 1) * LIMIT, page * LIMIT)
+              .map((activity: Activity) => (
               <li key={activity.id} className="flex items-center justify-between rounded-md border p-3">
                 <div className="font-medium">{activity.description}</div>
                 <div className="text-sm text-muted-foreground">{activity.timestamp}</div>
@@ -377,6 +394,15 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
             ))}
             {recentActivities.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">No recent activities.</p>}
           </ul>
+          {recentActivities.length > LIMIT && (
+            <div className="flex items-center justify-between mt-3">
+              <div className="text-xs text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(recentActivities.length / LIMIT))}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

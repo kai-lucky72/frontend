@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,21 +9,45 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { syncAgentClients, getAgentClients } from "@/lib/api"
+import { getAgentClients } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AgentClientsPage() {
   const { toast } = useToast()
-  const [clients, setClients] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [from, setFrom] = useState<string>("auto")
-  const [to, setTo] = useState<string>("")
+  const router = useRouter()
+  const search = useSearchParams()
 
-  const load = async () => {
+  const initialFrom = search.get("from") || "auto"
+  const initialTo = search.get("to") || ""
+  const initialPage = parseInt(search.get("page") || "1", 10)
+  const initialLimit = parseInt(search.get("limit") || "20", 10)
+
+  const [from, setFrom] = useState<string>(initialFrom)
+  const [to, setTo] = useState<string>(initialTo)
+  const [page, setPage] = useState<number>(initialPage)
+  const [limit, setLimit] = useState<number>(initialLimit)
+
+  const [items, setItems] = useState<any[]>([])
+  const [total, setTotal] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / limit)), [total, limit])
+
+  const updateUrl = (f = from, t = to, p = page, l = limit) => {
+    const params = new URLSearchParams()
+    if (f) params.set("from", f)
+    if (t) params.set("to", t)
+    params.set("page", String(p))
+    params.set("limit", String(l))
+    router.replace(`/agent/clients?${params.toString()}`)
+  }
+
+  const load = async (f = from, t = to, p = page, l = limit) => {
     setIsLoading(true)
     try {
-      const data = await getAgentClients({ from: from || undefined, to: to || undefined })
-      setClients(Array.isArray(data) ? data : [])
+      const res = await getAgentClients({ from: f || undefined, to: t || undefined, page: p, limit: l })
+      setItems(Array.isArray(res.items) ? res.items : [])
+      setTotal(res.total || 0)
     } catch (e: any) {
       toast({ title: "Failed to load clients", description: e?.userFriendly || e?.message || "Please try again." })
     } finally {
@@ -30,16 +55,39 @@ export default function AgentClientsPage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load(initialFrom, initialTo, initialPage, initialLimit)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleSync = async () => {
-    try {
-      await syncAgentClients()
-      toast({ title: "Sync started", description: "Clients synchronization triggered." })
-      load()
-    } catch (e: any) {
-      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
-    }
+  const applyFilters = () => {
+    const newPage = 1
+    setPage(newPage)
+    updateUrl(from, to, newPage, limit)
+    load(from, to, newPage, limit)
+  }
+
+  const changePage = (next: number) => {
+    const target = Math.min(Math.max(1, next), totalPages)
+    setPage(target)
+    updateUrl(from, to, target, limit)
+    load(from, to, target, limit)
+  }
+
+  const changeLimit = (l: number) => {
+    const newLimit = l
+    setLimit(newLimit)
+    const newPage = 1
+    setPage(newPage)
+    updateUrl(from, to, newPage, newLimit)
+    load(from, to, newPage, newLimit)
+  }
+
+  const rowKey = (c: any, index: number) => {
+    const id = c?.id ?? "noid"
+    const pn = c?.proposalNumber ?? "nopn"
+    const date = c?.proposalDate ?? "nodate"
+    return `${String(id)}-${String(pn)}-${String(date)}-${index}`
   }
 
   return (
@@ -56,7 +104,7 @@ export default function AgentClientsPage() {
           <CardHeader>
             <CardTitle>Filters</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label>From</Label>
               <Input placeholder="auto or yyyy-mm-dd" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -65,11 +113,18 @@ export default function AgentClientsPage() {
               <Label>To</Label>
               <Input placeholder="yyyy-mm-dd" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
+            <div>
+              <Label>Limit</Label>
+              <select className="h-10 border rounded px-2" value={limit} onChange={(e) => changeLimit(parseInt(e.target.value, 10))}>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
             <div className="md:col-span-2 flex items-end gap-2">
-              <Button onClick={load}>Apply</Button>
-              <Button variant="outline" onClick={() => { setFrom("auto"); setTo(""); }}>This Month</Button>
-              <Button variant="outline" onClick={() => { setFrom(""); setTo(""); }}>All</Button>
-              <Button onClick={handleSync}>Sync Clients</Button>
+              <Button onClick={applyFilters}>Apply</Button>
+              <Button variant="outline" onClick={() => { setFrom("auto"); setTo(""); setPage(1); updateUrl("auto", "", 1, limit); load("auto", "", 1, limit); }}>This Month</Button>
+              <Button variant="outline" onClick={() => { setFrom(""); setTo(""); setPage(1); updateUrl("", "", 1, limit); load("", "", 1, limit); }}>All</Button>
             </div>
           </CardContent>
         </Card>
@@ -81,7 +136,7 @@ export default function AgentClientsPage() {
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8">Loading...</div>
-            ) : clients.length === 0 ? (
+            ) : items.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">No clients found.</div>
             ) : (
               <div className="rounded-md border overflow-x-auto">
@@ -96,8 +151,8 @@ export default function AgentClientsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.map((c) => (
-                      <TableRow key={c.id}>
+                    {items.map((c, index) => (
+                      <TableRow key={rowKey(c, index)}>
                         <TableCell>{c.proposalNumber}</TableCell>
                         <TableCell>{c.customerName}</TableCell>
                         <TableCell>{c.proposalDate ? new Date(c.proposalDate).toLocaleDateString() : "-"}</TableCell>
@@ -109,6 +164,15 @@ export default function AgentClientsPage() {
                 </Table>
               </div>
             )}
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">Page {page} of {totalPages}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => changePage(page - 1)} disabled={page <= 1}>Prev</Button>
+                <Button variant="outline" onClick={() => changePage(page + 1)} disabled={page >= totalPages}>Next</Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

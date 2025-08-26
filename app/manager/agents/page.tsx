@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle, RefreshCw, Users as UsersIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Agent } from "@/lib/types"
-import { getAgents, updateAgent, deleteAgent, getManagerAgentClients, syncManagerAgentClients } from "@/lib/api"
+import { getAgents, updateAgent, deleteAgent, getManagerAgentClients } from "@/lib/api"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -115,12 +115,12 @@ export default function AgentsPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-2 sm:px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-2 sm:px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1 min-w-0">
           <h1 className="text-lg sm:text-xl font-semibold truncate">Manage Agents</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">Create, edit, and manage sales agents</p>
+          <p className="text-xs sm:text-sm opacity-90 truncate">Create, edit, and manage sales agents</p>
         </div>
         {/* Add Agent removed */}
       </header>
@@ -144,7 +144,7 @@ export default function AgentsPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border border-primary/15">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -164,7 +164,7 @@ export default function AgentsPage() {
                         <div className="font-medium text-xs sm:text-sm flex items-center gap-1">
                           {agent.firstName} {agent.lastName}
                           {agent.teamLeader && (
-                            <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                            <Badge variant="outline" className="text-xs px-1 py-0 h-4 border-primary/40 text-primary">
                               TL
                             </Badge>
                           )}
@@ -213,21 +213,7 @@ export default function AgentsPage() {
                         >
                           <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            try {
-                              await syncManagerAgentClients(agent.id)
-                              toast({ title: "Sync started", description: `Client sync triggered for ${agent.firstName}.` })
-                            } catch (e: any) {
-                              toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
-                            }
-                          }}
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                        >
-                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
+                        {/* Sync removed per backend guidance (external-only mode) */}
                         <Button
                           variant="ghost"
                           size="sm"
