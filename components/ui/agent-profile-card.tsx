@@ -1,7 +1,6 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { User, Users, Crown } from "lucide-react"
 
 interface AgentProfileCardProps {
@@ -19,9 +18,9 @@ export const AgentProfileCard = ({ agentName, agentType, groupName, teamLeader }
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12">
-            <AvatarFallback>{agentName.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+            <User className="h-6 w-6 text-muted-foreground" />
+          </div>
           <div>
             <p className="font-bold text-lg">{agentName}</p>
             <p className="text-sm text-muted-foreground">{agentType}</p>

@@ -448,6 +448,37 @@ export const getAgentNotifications = async (params: { page?: number; limit?: num
   return await fetchApi(`/agent/notifications${qs}`);
 };
 
+// Agent clients API
+export const syncAgentClients = async (): Promise<{ status: string }> => {
+  return fetchApi('/agent/clients/sync', { method: 'POST' });
+};
+
+export const getAgentClients = async (params: { from?: string; to?: string } = {}): Promise<any[]> => {
+  const query = new URLSearchParams();
+  if (params.from) query.append('from', params.from);
+  if (params.to) query.append('to', params.to);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/agent/clients${qs}`);
+};
+
+// Manager -> agent clients API
+export const syncManagerAgentClients = async (agentId: string | number): Promise<{ status: string }> => {
+  const numericId = extractNumericId(String(agentId));
+  return fetchApi(`/manager/agents/${numericId}/clients/sync`, { method: 'POST' });
+};
+
+export const getManagerAgentClients = async (
+  agentId: string | number,
+  params: { from?: string; to?: string } = {}
+): Promise<any[]> => {
+  const numericId = extractNumericId(String(agentId));
+  const query = new URLSearchParams();
+  if (params.from) query.append('from', params.from);
+  if (params.to) query.append('to', params.to);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/manager/agents/${numericId}/clients${qs}`);
+};
+
 // Mark single notification as read
 export const markNotificationAsRead = async (id: string): Promise<void> => {
   return fetchApi(`/notifications/${id}/read`, {

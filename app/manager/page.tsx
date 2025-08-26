@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, Clock, TrendingUp, UserPlus, MapPin, AlertCircle } from "lucide-react"
+import { Users, Clock, TrendingUp, MapPin, AlertCircle } from "lucide-react"
 import { ChartTooltipContent } from "@/components/ui/chart"
 import { Tooltip, Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -40,7 +40,6 @@ export default function ManagerDashboard() {
       const data = await getManagerDashboardData()
       setDashboardData(data)
       setTempTimeframe(data.attendance.timeframe)
-      setIsMock(false)
     } catch (err) {
       setError("Failed to load dashboard data. Please try again later.")
       console.error(err)
@@ -100,6 +99,7 @@ export default function ManagerDashboard() {
   const statsCards = [
     { name: "Total Agents", value: dashboardData.stats.totalAgents, icon: Users },
     { name: "Active Today", value: dashboardData.stats.activeToday, icon: Clock },
+    { name: "Clients Collected", value: (dashboardData as any)?.stats?.clientsCollected ?? 0, icon: TrendingUp },
   ]
 
   return (
@@ -111,12 +111,7 @@ export default function ManagerDashboard() {
           <h1 className="text-xl font-semibold">Manager Dashboard</h1>
           <p className="text-sm text-muted-foreground">Manage your agents and monitor performance</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => router.push("/manager/agents")}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Agent
-          </Button>
-        </div>
+        <div className="flex items-center gap-2"></div>
       </header>
 
       <main className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
@@ -145,8 +140,8 @@ export default function ManagerDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 sm:space-y-4">
-                {dataToUse.recentActivities.length > 0 ? (
-                  dataToUse.recentActivities.map((activity) => (
+                {dashboardData.recentActivities.length > 0 ? (
+                  dashboardData.recentActivities.map((activity) => (
                     <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border gap-2">
                       <div className="space-y-1 min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{activity.agentName}</p>

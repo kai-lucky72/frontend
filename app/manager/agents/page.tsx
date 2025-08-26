@@ -24,10 +24,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle } from "lucide-react"
+import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle, RefreshCw, Users as UsersIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Agent } from "@/lib/types"
-import { getAgents, updateAgent, deleteAgent } from "@/lib/api"
+import { getAgents, updateAgent, deleteAgent, getManagerAgentClients, syncManagerAgentClients } from "@/lib/api"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -213,6 +213,31 @@ export default function AgentsPage() {
                         >
                           <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await syncManagerAgentClients(agent.id)
+                              toast({ title: "Sync started", description: `Client sync triggered for ${agent.firstName}.` })
+                            } catch (e: any) {
+                              toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
+                            }
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        >
+                          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            window.location.href = `/manager/agents/${agent.id}/clients`
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                        >
+                          <UsersIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

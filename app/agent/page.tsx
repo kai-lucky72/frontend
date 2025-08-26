@@ -12,10 +12,10 @@ import { useAttendance } from "@/contexts/AttendanceContext"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { AgentProfileCard } from "@/components/ui/agent-profile-card"
-import { getAgentDashboardData, getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance } from "@/lib/api"
+import { getAgentDashboardData, getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance, syncAgentClients } from "@/lib/api"
 import { IndividualAgentDashboardData, SalesAgentDashboardData, Activity } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, Clock, Calendar, Check, X } from "lucide-react"
+import { Users, Clock, Calendar, Check, X, TrendingUp } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -54,6 +54,7 @@ export default function AgentDashboard() {
   const [attendanceTimeframe, setAttendanceTimeframe] = useState<{ start: string; end: string }>({ start: "-", end: "-" })
   // Use the fetched attendanceTimeframe for all logic
   const [timeState, setTimeState] = useState({ isActive: false, isWarning: false, isExpired: false })
+  const [isSyncingClients, setIsSyncingClients] = useState(false)
   
 
   useEffect(() => {
@@ -234,16 +235,16 @@ export default function AgentDashboard() {
     return <DashboardLoadingSkeleton />;
   }
 
-  const handleAddMockData = () => {
-    // Use the correct mock data based on agent type
-    const agentType = dashboardData?.agentType || "individual";
-    setDashboardData(agentType === "sales" ? mockSalesData : mockIndividualData)
-    setIsMock(true)
-    setError(null)
-    setIsLoading(false)
-  }
-  const handleRemoveMockData = () => {
-    setIsMock(false)
+  const handleSyncClients = async () => {
+    try {
+      setIsSyncingClients(true)
+      await syncAgentClients()
+      toast({ title: "Sync started", description: "Clients synchronization triggered." })
+    } catch (e: any) {
+      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
+    } finally {
+      setIsSyncingClients(false)
+    }
   }
 
   return (
@@ -263,6 +264,45 @@ export default function AgentDashboard() {
         <div className="p-4 text-center text-red-500 bg-red-50 border-b text-sm">{error}</div>
       )}
       <main className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
+        {/* KPI Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clients This Month</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dataToUse?.clientsThisMonth ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dataToUse?.totalClients ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Performance Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dataToUse?.performanceRate ?? 0}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="flex gap-2">
+              <Button onClick={() => window.location.href = "/agent/clients"} variant="outline">My Clients</Button>
+              <Button onClick={handleSyncClients} disabled={isSyncingClients}>{isSyncingClients ? "Syncing…" : "Sync Clients"}</Button>
+            </CardContent>
+          </Card>
+        </div>
         {/* Always render both views, but pass fallback data if missing */}
         {((dashboardData && dashboardData.groupName) || (!dashboardData && false)) ? (
           <SalesAgentView data={dataToUse} />

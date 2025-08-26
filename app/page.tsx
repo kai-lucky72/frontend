@@ -17,7 +17,7 @@ import { useLoginError } from "@/hooks/use-api-error"
 export default function LoginPage() {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
-
+  const [errorMessage, setErrorMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -26,6 +26,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(""); // Clear any previous errors
 
     try {
       // Call the backend-driven login function (phone + password only)
@@ -58,19 +59,26 @@ export default function LoginPage() {
       router.push(`/${user.role}`);
 
     } catch (error: any) {
-      handleError(error, "Login");
+      // Handle specific error cases with clear messages
+      let message = "Something went wrong. Please try again.";
+      
+      if (error.status === 401) {
+        message = "Invalid phone number or password. Please check your credentials and try again.";
+      } else if (error.status === 404) {
+        message = "User not found. Please check your phone number and try again.";
+      } else if (error.status === 422) {
+        message = "Please provide both phone number and password.";
+      } else if (error.status === 0 || error.message?.includes('Network')) {
+        message = "Unable to connect to the server. Please check your internet connection and try again.";
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const getGroupName = (email: string) => {
-    // Simulate group assignment based on email
-    if (email.includes("alpha") || email.includes("team1")) return "Alpha Team"
-    if (email.includes("beta") || email.includes("team2")) return "Beta Team"
-    if (email.includes("gamma") || email.includes("team3")) return "Gamma Team"
-    return "Alpha Team" // Default
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-3 sm:p-4">
@@ -126,6 +134,15 @@ export default function LoginPage() {
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
+
+            {/* Error Message Display */}
+            {errorMessage && (
+              <div className="mt-4 p-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-700 text-center leading-relaxed">
+                  {errorMessage}
+                </p>
+              </div>
+            )}
           </form>
 
           

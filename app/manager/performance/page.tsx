@@ -1,204 +1,241 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { User, MapPin, TrendingUp } from "lucide-react"
+// IMPORTANT: This file has been completely cleaned of all mock data and mock data toggles.
+// All data is now fetched from the backend API only.
+// DO NOT add any mock data, isMock state, or mock data toggles to this file.
+
+import React, { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ChartContainer } from "@/components/ui/chart"
-import { getManagerPerformance } from "@/lib/api"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { getAgents, getManagerAgentClients, syncManagerAgentClients } from "@/lib/api"
+import type { Agent } from "@/lib/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+function formatISO(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+type Period = "daily" | "weekly" | "monthly" | "three_months"
+
+function getRange(period: Period): { from: string; to: string } {
+  const now = new Date()
+  const start = new Date(now)
+  const end = new Date(now)
+  switch (period) {
+    case "daily":
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+      break
+    case "weekly": {
+      const day = now.getDay() // 0 Sun .. 6 Sat
+      const diffToMonday = (day + 6) % 7
+      start.setDate(now.getDate() - diffToMonday)
+      start.setHours(0, 0, 0, 0)
+      end.setDate(start.getDate() + 6)
+      end.setHours(23, 59, 59, 999)
+      break
+    }
+    case "monthly": {
+      start.setDate(1)
+      start.setHours(0, 0, 0, 0)
+      end.setMonth(start.getMonth() + 1)
+      end.setDate(0) // last day of previous month (i.e., current month)
+      end.setHours(23, 59, 59, 999)
+      break
+    }
+    case "three_months": {
+      start.setMonth(start.getMonth() - 3)
+      start.setHours(0, 0, 0, 0)
+      end.setHours(23, 59, 59, 999)
+      break
+    }
+  }
+  return { from: formatISO(start), to: formatISO(end) }
+}
 
 export default function ManagerPerformancePage() {
-  const [dashboardData, setDashboardData] = useState<any>(null)
+  const { toast } = useToast()
+  const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
-  const [period, setPeriod] = useState("monthly") // default to monthly
-  const [isMock, setIsMock] = useState(false)
 
-  // Mock data for demo/visual purposes (attendance-focused)
-  const mockDashboardData = {
-    stats: {
-      mostActiveLocation: "Lagos",
-    },
-    individualPerformance: [],
-    groupPerformance: [],
-  }
+  const [isClientsDialogOpen, setIsClientsDialogOpen] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [clientsLoading, setClientsLoading] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+
+  const [period, setPeriod] = useState<Period>("weekly")
+  const range = useMemo(() => getRange(period), [period])
 
   useEffect(() => {
-    if (!isMock) {
-      async function fetchData() {
-        setLoading(true)
-        setError(null)
-        try {
-          const data = await getManagerPerformance(period)
-          setDashboardData(data)
-        } catch (err) {
-          setError("Failed to load performance data.")
-        } finally {
-          setLoading(false)
-        }
+    const loadAgents = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const list = await getAgents()
+        setAgents(Array.isArray(list) ? list : [])
+      } catch (e: any) {
+        setError("Failed to load agents.")
+      } finally {
+        setLoading(false)
       }
-      fetchData()
     }
-  }, [period, isMock])
+    loadAgents()
+  }, [])
 
-  const handleAddMockData = () => {
-    setDashboardData(mockDashboardData)
-    setError(null)
-    setLoading(false)
-    setIsMock(true)
+  const fetchClientsForAgent = async (agentId: string | number) => {
+    const data = await getManagerAgentClients(agentId, { from: range.from, to: range.to })
+    return Array.isArray(data) ? data : []
   }
 
-  const handleRemoveMockData = () => {
-    setIsMock(false)
+  const handleOpenClients = async (agent: Agent) => {
+    setSelectedAgent(agent)
+    setIsClientsDialogOpen(true)
+    setClientsLoading(true)
+    try {
+      const data = await fetchClientsForAgent(agent.id)
+      setClients(data)
+    } catch (e: any) {
+      toast({ title: "Failed to fetch clients", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
+    } finally {
+      setClientsLoading(false)
+    }
   }
 
-  const toggleGroupExpansion = (groupId: string) => {
-    setExpandedGroup(expandedGroup === groupId ? null : groupId)
+  const handleSyncAgent = async (agent: Agent) => {
+    try {
+      await syncManagerAgentClients(agent.id)
+      toast({ title: "Sync started", description: `Client sync triggered for ${agent.firstName} ${agent.lastName}.` })
+      if (selectedAgent && selectedAgent.id === agent.id && isClientsDialogOpen) {
+        setClientsLoading(true)
+        const data = await fetchClientsForAgent(agent.id)
+        setClients(data)
+        setClientsLoading(false)
+      }
+    } catch (e: any) {
+      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
+    }
   }
-
-  if (loading) {
-    return <div className="p-8">Loading performance data...</div>
-  }
-  if (error) {
-    return <div className="p-8 text-red-500">{error}</div>
-  }
-
-  if (!dashboardData) {
-    return <div className="p-8">No performance data available.</div>
-  }
-
-  // Map backend data to frontend format (placeholders for attendance-focused KPIs)
-  const kpiData = {
-    topAgent: dashboardData.individualPerformance?.[0] || { name: "-" },
-    topGroup: dashboardData.groupPerformance?.[0] || { name: "-" },
-    topLocation: dashboardData.stats?.mostActiveLocation || "-",
-  }
-
-  const groupPerformanceData = dashboardData.groupPerformance?.map((g: any, idx: number) => ({
-    id: g.name || idx,
-    name: g.name,
-    leader: g.teamLeader || "-",
-    membersCount: g.members || 0,
-    members: g.membersList || [],
-  })) || []
-
-  const individualAgentData = dashboardData.individualPerformance || []
-
-  // Period options - matching backend expectations
-  const periodOptions = [
-    { value: "weekly", label: "Last 7 days" },
-    { value: "monthly", label: "Last 30 days" },
-    { value: "all_time", label: "All Time" },
-  ]
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      {/* Add Mock Data Button */}
-      <div className="mb-4 flex justify-end">
-        {isMock ? (
-          <Button variant="destructive" onClick={handleRemoveMockData}>
-            Remove Mock Data
-          </Button>
-        ) : (
-          <Button variant="outline" onClick={handleAddMockData}>
-            Add Mock Data
-          </Button>
-        )}
-      </div>
-      {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Performance Dashboard</h2>
-        <div className="flex items-center space-x-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select period" />
+    <div className="flex flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <div className="flex-1">
+          <h1 className="text-xl font-semibold">Agent Performance</h1>
+          <p className="text-sm text-muted-foreground">Period: {period.replace("_", " ")} • {range.from} → {range.to}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {periodOptions.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="three_months">Three Months</SelectItem>
             </SelectContent>
           </Select>
         </div>
+      </header>
+
+      <div className="flex-1 space-y-6 p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Agents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading && <div className="text-center py-8">Loading...</div>}
+            {error && <div className="text-center py-8 text-red-500">{error}</div>}
+            {!loading && !error && (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Performance (%)</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agents.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell>
+                          <div className="font-medium">{a.firstName} {a.lastName}</div>
+                          <div className="text-xs text-muted-foreground">{a.email}</div>
+                        </TableCell>
+                        <TableCell>{a.type === "sales" ? (a.groupName || "-") : "-"}</TableCell>
+                        <TableCell>{a.status}</TableCell>
+                        <TableCell>{a.attendanceRate != null ? `${a.attendanceRate}%` : "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => handleOpenClients(a)}>Get Clients</Button>
+                            <Button size="sm" onClick={() => handleSyncAgent(a)}>Sync Clients</Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* KPI Cards (attendance-focused) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performing Agent</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.topAgent.name}</div>
-            <p className="text-xs text-muted-foreground">Top agent by attendance</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performing Group</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.topGroup.name}</div>
-            <p className="text-xs text-muted-foreground">Best attendance group</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Most Active Location</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{kpiData.topLocation}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="group_performance" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="group_performance">Group Performance</TabsTrigger>
-          <TabsTrigger value="individual_performance">Individual Agent Performance</TabsTrigger>
-        </TabsList>
-
-        {/* Group Performance Tab */}
-        <TabsContent value="group_performance" className="space-y-4">
-          <div className="p-4 border rounded-lg">
-              <h3 className="text-lg font-semibold mb-4">Group Breakdown</h3>
+      <Dialog open={isClientsDialogOpen} onOpenChange={setIsClientsDialogOpen}>
+        <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Clients</DialogTitle>
+            <DialogDescription>
+              {selectedAgent ? `${selectedAgent.firstName} ${selectedAgent.lastName} • ${range.from} → ${range.to}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {clientsLoading ? (
+            <div className="text-center py-6">Loading clients…</div>
+          ) : (
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Group Name</TableHead>
-                    <TableHead>Team Leader</TableHead>
-                  <TableHead className="text-right">Members</TableHead>
+                    <TableHead>Proposal No</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Premium</TableHead>
+                    <TableHead>Converted</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {groupPerformanceData.map((group: any, groupIdx: number) => (
-                  <TableRow key={group.id || group.name || groupIdx} className="cursor-pointer" onClick={() => toggleGroupExpansion(group.id)}>
-                        <TableCell className="font-medium">{group.name}</TableCell>
-                        <TableCell>{group.leader}</TableCell>
-                    <TableCell className="text-right">{group.membersCount}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-          </div>
-        </TabsContent>
-
-        {/* Individual Agent Performance Tab */}
-        <TabsContent value="individual_performance">
-          <div className="p-4 border rounded-lg">
-            <h3 className="text-lg font-semibold mb-4">Individual Agent Performance</h3>
-            <p className="text-sm text-muted-foreground">Attendance-based performance coming soon.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
+                  {clients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">No clients found.</TableCell>
+                    </TableRow>
+                  ) : (
+                    clients.map((c: any) => (
+                      <TableRow key={c.id}>
+                        <TableCell>{c.proposalNumber}</TableCell>
+                        <TableCell>{c.customerName}</TableCell>
+                        <TableCell>{c.proposalDate ? new Date(c.proposalDate).toLocaleDateString() : "-"}</TableCell>
+                        <TableCell>{c.premium}</TableCell>
+                        <TableCell>{c.converted ? "Yes" : "No"}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

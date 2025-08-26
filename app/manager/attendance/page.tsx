@@ -163,12 +163,7 @@ export default function AttendancePage() {
           <h1 className="text-xl font-semibold">Attendance Tracking</h1>
           <p className="text-sm text-muted-foreground">Monitor agent attendance and punctuality</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
+        <div className="flex items-center gap-2"></div>
       </header>
 
       <div className="flex-1 space-y-6 p-6">
