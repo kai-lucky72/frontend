@@ -39,6 +39,10 @@ export default function AgentsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Pagination (client-side)
+  const [page, setPage] = useState<number>(1)
+  const LIMIT = 10
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
@@ -65,6 +69,9 @@ export default function AgentsPage() {
   useEffect(() => {
     fetchAgents()
   }, [fetchAgents])
+
+  const totalPages = Math.max(1, Math.ceil(agents.length / LIMIT))
+  const pagedAgents = agents.slice((page - 1) * LIMIT, page * LIMIT)
 
   // Fix: Only update state and close dialog in handleCreateSuccess, do not call createAgent again
   // Creation disabled by backend (403). Keep edit/view/delete only.
@@ -144,6 +151,7 @@ export default function AgentsPage() {
             </div>
           </div>
         ) : (
+          <>
           <div className="rounded-md border border-primary/15">
             <Table>
               <TableHeader>
@@ -157,7 +165,7 @@ export default function AgentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agents.map((agent) => (
+                {pagedAgents.map((agent) => (
                     <TableRow key={agent.id}>
                       <TableCell>
                       <div>
@@ -242,6 +250,18 @@ export default function AgentsPage() {
               </TableBody>
             </Table>
           </div>
+          {agents.length > LIMIT && (
+            <div className="flex items-center justify-between mt-3">
+              <div className="text-xs text-muted-foreground">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</Button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 

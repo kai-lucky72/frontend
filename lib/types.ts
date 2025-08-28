@@ -166,7 +166,6 @@ export type ManagerListItemDTO = {
 
 export type AttendanceSummary = {
   present: number;
-  late: number;
   absent: number;
   onTimeRate: number;
 };

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { getManagerAgentClients, syncManagerAgentClients } from "@/lib/api"
+import { getManagerAgentClients } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ManagerAgentClientsPage() {
@@ -36,13 +36,32 @@ export default function ManagerAgentClientsPage() {
 
   useEffect(() => { load() }, [agentId])
 
-  const handleSync = async () => {
+  // sync removed per backend external-only mode
+
+  const handleDownload = async () => {
     try {
-      await syncManagerAgentClients(agentId)
-      toast({ title: "Sync started", description: "Clients synchronization triggered." })
-      load()
+      if (!agentId) return
+      const params = new URLSearchParams()
+      if (from && from !== "auto") params.set("startDate", from)
+      if (to) params.set("endDate", to)
+      const url = `http://localhost:5238/api/manager/agents/${agentId}/clients/download?${params.toString()}`
+      const token = localStorage.getItem("authToken")
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error("Failed to download clients")
+      const blob = await res.blob()
+      const dispo = res.headers.get("Content-Disposition") || ""
+      const match = dispo.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/)
+      const filename = decodeURIComponent(match?.[1] || match?.[2] || `agent_${agentId}_clients_${Date.now()}.json`)
+      const link = document.createElement("a")
+      const href = URL.createObjectURL(blob)
+      link.href = href
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(href)
     } catch (e: any) {
-      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
+      toast({ title: "Download failed", description: e?.message || "Unable to download clients.", variant: "destructive" })
     }
   }
 
@@ -73,7 +92,8 @@ export default function ManagerAgentClientsPage() {
               <Button onClick={load}>Apply</Button>
               <Button variant="outline" onClick={() => { setFrom("auto"); setTo(""); }}>This Month</Button>
               <Button variant="outline" onClick={() => { setFrom(""); setTo(""); }}>All</Button>
-              <Button onClick={handleSync}>Sync Clients</Button>
+              {/* Sync Clients removed */}
+              <Button variant="outline" onClick={handleDownload}>Download</Button>
             </div>
           </CardContent>
         </Card>

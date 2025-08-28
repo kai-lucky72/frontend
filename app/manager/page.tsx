@@ -146,20 +146,14 @@ export default function ManagerDashboard() {
                   dashboardData.recentActivities
                     .slice((activitiesPage - 1) * ACTIVITIES_LIMIT, activitiesPage * ACTIVITIES_LIMIT)
                     .map((activity) => (
-                    <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-primary/15 gap-2">
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{activity.agentName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{activity.action}</p>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0 text-primary" />
-                          <span className="truncate">{activity.location}</span>
-                        </div>
+                    <div key={activity.id} className="flex items-start justify-between p-3 rounded-lg border border-primary/15 gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug break-words">{activity.description}</p>
                       </div>
-                      <div className="text-right sm:text-left sm:ml-4">
-                        <Badge variant={activity.status === "success" ? "default" : activity.status === 'warning' ? 'secondary' : "destructive"} className="mb-1 text-xs">
-                          {activity.status}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                      <div className="text-right shrink-0 w-40">
+                        <p className="text-xs text-muted-foreground">
+                          {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : ""}
+                        </p>
                       </div>
                     </div>
                   ))

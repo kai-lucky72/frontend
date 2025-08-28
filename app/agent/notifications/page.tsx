@@ -16,6 +16,10 @@ export default function AgentNotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [pageAll, setPageAll] = useState<number>(1)
+  const [pageUnread, setPageUnread] = useState<number>(1)
+  const [pageUrgent, setPageUrgent] = useState<number>(1)
+  const LIMIT = 10
   const { toast } = useToast()
   
   const handleMarkAsRead = async (notificationId: string) => {
@@ -83,6 +87,16 @@ export default function AgentNotificationsPage() {
       (notif.message || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       ((notif.sender?.name || notif.sender?.role || notif.from || "").toLowerCase().includes(searchTerm.toLowerCase()))
   )
+  const totalAllPages = Math.max(1, Math.ceil(filteredNotifications.length / LIMIT))
+  const pagedAll = filteredNotifications.slice((pageAll - 1) * LIMIT, pageAll * LIMIT)
+
+  const unreadList = notifications.filter((notif) => !notif.read)
+  const totalUnreadPages = Math.max(1, Math.ceil(unreadList.length / LIMIT))
+  const pagedUnread = unreadList.slice((pageUnread - 1) * LIMIT, pageUnread * LIMIT)
+
+  const urgentList = notifications.filter((notif) => notif.priority === "urgent")
+  const totalUrgentPages = Math.max(1, Math.ceil(urgentList.length / LIMIT))
+  const pagedUrgent = urgentList.slice((pageUrgent - 1) * LIMIT, pageUrgent * LIMIT)
   const formatSender = (n: any) => n?.sender?.name || n?.sender?.role || n?.from || "System"
   const unreadCount = notifications.filter((notif) => !notif.read).length
   const urgentCount = notifications.filter((notif) => notif.priority === "urgent").length
@@ -103,58 +117,61 @@ export default function AgentNotificationsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-        <h1 className="text-xl font-semibold">Notifications</h1>
+    <div className="flex flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
+        <div className="flex-1">
+          <h1 className="text-xl font-semibold">Notifications</h1>
+          <p className="text-sm opacity-90">Stay updated with important messages</p>
+        </div>
       </header>
       <div className="flex-1 space-y-6 p-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
-              <Bell className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Total Notifications</CardTitle>
+              <Bell className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{notifications.length}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unread</CardTitle>
-              <Bell className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium text-primary">Unread</CardTitle>
+              <Bell className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{unreadCount}</div>
+              <div className="text-2xl font-bold text-primary">{unreadCount}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Urgent</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <CardTitle className="text-sm font-medium text-primary">Urgent</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{urgentCount}</div>
+              <div className="text-2xl font-bold text-primary">{urgentCount}</div>
             </CardContent>
           </Card>
         </div>
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Notifications</h2>
+          <h2 className="text-lg font-semibold text-primary">Notifications</h2>
           {unreadCount > 0 && (
-            <Button onClick={handleMarkAllAsRead} variant="outline" size="sm">
+            <Button onClick={handleMarkAllAsRead} variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/5">
               Mark All as Read
             </Button>
           )}
         </div>
         <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">All Notifications</TabsTrigger>
-            <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
-            <TabsTrigger value="urgent">Urgent</TabsTrigger>
+          <TabsList className="border border-primary/10">
+            <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">All Notifications</TabsTrigger>
+            <TabsTrigger value="unread" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Unread ({unreadCount})</TabsTrigger>
+            <TabsTrigger value="urgent" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Urgent</TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="space-y-6">
-            <Card>
+            <Card className="border border-primary/15">
               <CardHeader>
-                <CardTitle>All Notifications</CardTitle>
+                <CardTitle className="text-primary">All Notifications</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="relative mb-6">
@@ -172,7 +189,7 @@ export default function AgentNotificationsPage() {
                     <div className="text-center text-muted-foreground py-8">No notifications found.</div>
                   )}
                   {!loading && filteredNotifications.length > 0 && (
-                    filteredNotifications.map((notification) => (
+                    pagedAll.map((notification) => (
                       <div key={notification.id} className="flex items-start gap-4 p-4 border rounded-lg">
                         <div className="mt-1">{getNotificationIcon(notification.type)}</div>
                         <div className="flex-1 space-y-1">
@@ -211,6 +228,16 @@ export default function AgentNotificationsPage() {
                     ))
                   )}
                 </div>
+                {/* Pagination Controls: All */}
+                {filteredNotifications.length > LIMIT && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">Page {pageAll} of {totalAllPages}</div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setPageAll((p) => Math.max(1, p - 1))} disabled={pageAll <= 1}>Prev</Button>
+                      <Button variant="outline" onClick={() => setPageAll((p) => Math.min(totalAllPages, p + 1))} disabled={pageAll >= totalAllPages}>Next</Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -226,8 +253,8 @@ export default function AgentNotificationsPage() {
                   {!loading && notifications.filter((notif) => !notif.read).length === 0 && (
                     <div className="text-center text-muted-foreground py-8">No unread notifications.</div>
                   )}
-                  {!loading && notifications.filter((notif) => !notif.read).length > 0 && (
-                    notifications.filter((notif) => !notif.read).map((notification) => (
+                  {!loading && unreadList.length > 0 && (
+                    pagedUnread.map((notification) => (
                       <div key={notification.id} className="flex items-start gap-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                         <div className="mt-1">{getNotificationIcon(notification.type)}</div>
                         <div className="flex-1 space-y-1">
@@ -248,6 +275,16 @@ export default function AgentNotificationsPage() {
                     ))
                   )}
                 </div>
+                {/* Pagination Controls: Unread */}
+                {unreadList.length > LIMIT && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">Page {pageUnread} of {totalUnreadPages}</div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setPageUnread((p) => Math.max(1, p - 1))} disabled={pageUnread <= 1}>Prev</Button>
+                      <Button variant="outline" onClick={() => setPageUnread((p) => Math.min(totalUnreadPages, p + 1))} disabled={pageUnread >= totalUnreadPages}>Next</Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -263,8 +300,8 @@ export default function AgentNotificationsPage() {
                   {!loading && notifications.filter((notif) => notif.priority === "urgent").length === 0 && (
                     <div className="text-center text-muted-foreground py-8">No urgent notifications.</div>
                   )}
-                  {!loading && notifications.filter((notif) => notif.priority === "urgent").length > 0 && (
-                    notifications.filter((notif) => notif.priority === "urgent").map((notification) => (
+                  {!loading && urgentList.length > 0 && (
+                    pagedUrgent.map((notification) => (
                       <div key={notification.id} className="flex items-start gap-4 p-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950">
                         <div className="mt-1">
                           <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -287,6 +324,16 @@ export default function AgentNotificationsPage() {
                     ))
                   )}
                 </div>
+                {/* Pagination Controls: Urgent */}
+                {urgentList.length > LIMIT && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">Page {pageUrgent} of {totalUrgentPages}</div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setPageUrgent((p) => Math.max(1, p - 1))} disabled={pageUrgent <= 1}>Prev</Button>
+                      <Button variant="outline" onClick={() => setPageUrgent((p) => Math.min(totalUrgentPages, p + 1))} disabled={pageUrgent >= totalUrgentPages}>Next</Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -83,6 +83,33 @@ export default function AgentClientsPage() {
     load(from, to, newPage, newLimit)
   }
 
+  const handleDownload = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (from && from !== "auto") params.set("startDate", from)
+      if (to) params.set("endDate", to)
+      params.set("format", "csv")
+      const url = `http://localhost:5238/api/agent/clients/download?${params.toString()}`
+      const token = localStorage.getItem("authToken")
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error("Failed to download clients")
+      const blob = await res.blob()
+      const dispo = res.headers.get("Content-Disposition") || ""
+      const match = dispo.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/)
+      const filename = decodeURIComponent(match?.[1] || match?.[2] || `clients_${Date.now()}.csv`)
+      const link = document.createElement("a")
+      const href = URL.createObjectURL(blob)
+      link.href = href
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(href)
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e?.message || "Unable to download clients.", variant: "destructive" })
+    }
+  }
+
   const rowKey = (c: any, index: number) => {
     const id = c?.id ?? "noid"
     const pn = c?.proposalNumber ?? "nopn"
@@ -92,17 +119,18 @@ export default function AgentClientsPage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">My Clients</h1>
+          <p className="text-sm opacity-90">Manage and view your client data</p>
         </div>
       </header>
       <div className="flex-1 space-y-6 p-6">
-        <Card>
+        <Card className="border border-primary/15">
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
+            <CardTitle className="text-primary">Filters</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
@@ -121,17 +149,18 @@ export default function AgentClientsPage() {
                 <option value={50}>50</option>
               </select>
             </div>
-            <div className="md:col-span-2 flex items-end gap-2">
-              <Button onClick={applyFilters}>Apply</Button>
-              <Button variant="outline" onClick={() => { setFrom("auto"); setTo(""); setPage(1); updateUrl("auto", "", 1, limit); load("auto", "", 1, limit); }}>This Month</Button>
-              <Button variant="outline" onClick={() => { setFrom(""); setTo(""); setPage(1); updateUrl("", "", 1, limit); load("", "", 1, limit); }}>All</Button>
-            </div>
+                         <div className="md:col-span-2 flex items-end gap-2">
+               <Button onClick={applyFilters} className="bg-primary hover:bg-primary/90">Apply</Button>
+               <Button variant="outline" onClick={() => { setFrom("auto"); setTo(""); setPage(1); updateUrl("auto", "", 1, limit); load("auto", "", 1, limit); }} className="border-primary/20 text-primary hover:bg-primary/5">This Month</Button>
+               <Button variant="outline" onClick={() => { setFrom(""); setTo(""); setPage(1); updateUrl("", "", 1, limit); load("", "", 1, limit); }} className="border-primary/20 text-primary hover:bg-primary/5">All</Button>
+               <Button variant="outline" onClick={handleDownload} className="border-primary/20 text-primary hover:bg-primary/5">Download</Button>
+             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-primary/15">
           <CardHeader>
-            <CardTitle>Clients</CardTitle>
+            <CardTitle className="text-primary">Clients</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -139,15 +168,15 @@ export default function AgentClientsPage() {
             ) : items.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">No clients found.</div>
             ) : (
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-md border border-primary/10 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Proposal No</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Premium</TableHead>
-                      <TableHead>Converted</TableHead>
+                      <TableHead className="text-primary font-medium">Proposal No</TableHead>
+                      <TableHead className="text-primary font-medium">Customer</TableHead>
+                      <TableHead className="text-primary font-medium">Date</TableHead>
+                      <TableHead className="text-primary font-medium">Premium</TableHead>
+                      <TableHead className="text-primary font-medium">Converted</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -169,8 +198,8 @@ export default function AgentClientsPage() {
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">Page {page} of {totalPages}</div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => changePage(page - 1)} disabled={page <= 1}>Prev</Button>
-                <Button variant="outline" onClick={() => changePage(page + 1)} disabled={page >= totalPages}>Next</Button>
+                <Button variant="outline" onClick={() => changePage(page - 1)} disabled={page <= 1} className="border-primary/20 text-primary hover:bg-primary/5">Prev</Button>
+                <Button variant="outline" onClick={() => changePage(page + 1)} disabled={page >= totalPages} className="border-primary/20 text-primary hover:bg-primary/5">Next</Button>
               </div>
             </div>
           </CardContent>

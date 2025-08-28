@@ -31,7 +31,7 @@ interface AttendanceRecord {
   date: string
   timeIn: string
   location: string
-  status: "present" | "late" | "absent"
+  status: "present" | "absent"
   sector: string
 }
 
@@ -142,7 +142,7 @@ export default function AttendancePage() {
   const records = attendanceData.records || []
   const attendanceRate = stats.attendanceRate || 0
   const presentCount = stats.presentCount || 0
-  const lateCount = stats.lateCount || 0
+  // late removed per backend
   const absentCount = stats.absentCount || 0
   const attendanceTimeframe = stats.timeframe || { startTime: "06:00", endTime: "09:00" }
 
@@ -189,16 +189,7 @@ export default function AttendancePage() {
               <div className="text-xs text-muted-foreground">On time arrivals</div>
             </CardContent>
           </Card>
-          <Card className="border border-primary/15 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-primary">Late</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{lateCount}</div>
-              <div className="text-xs text-muted-foreground">Late arrivals</div>
-            </CardContent>
-          </Card>
+          {/* Late KPI removed per backend contract */}
           <Card className="border border-primary/15 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-primary">Absent</CardTitle>
@@ -337,7 +328,6 @@ export default function AttendancePage() {
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="present">Present</SelectItem>
-                    <SelectItem value="late">Late</SelectItem>
                     <SelectItem value="absent">Absent</SelectItem>
                   </SelectContent>
                 </Select>
@@ -367,13 +357,7 @@ export default function AttendancePage() {
                       <TableCell>{record.sector}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={
-                            record.status === "present"
-                              ? "default"
-                              : record.status === "late"
-                                ? "destructive"
-                                : "secondary"
-                          }
+                          variant={record.status === "present" ? "default" : "secondary"}
                         >
                           {record.status}
                         </Badge>

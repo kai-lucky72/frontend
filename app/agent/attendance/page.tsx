@@ -30,13 +30,10 @@ interface AttendanceRecord {
   time: string
   location: string
   sector: string
-  status: "present" | "late" | "absent"
+  status: "present" | "absent"
 }
 
-const initialRecords: AttendanceRecord[] = [
-  { id: "1", date: "2024-07-09", time: "08:30", location: "Downtown Office", sector: "Life Insurance", status: "present" },
-  { id: "2", date: "2024-07-08", time: "09:15", location: "Uptown Branch", sector: "Health Insurance", status: "late" },
-]
+const initialRecords: AttendanceRecord[] = []
 
 // --- Main Component ---
 export default function AttendancePage() {
@@ -54,7 +51,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [historyPage, setHistoryPage] = useState<number>(1)
-  const HISTORY_LIMIT = 5
+  const HISTORY_LIMIT = 3
 
   useEffect(() => {
     const fetchAttendance = async () => {
@@ -273,21 +270,21 @@ export default function AttendancePage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Attendance Management</h1>
-          <p className="text-sm text-muted-foreground">Mark your daily attendance and track your record</p>
+          <p className="text-sm opacity-90">Mark your daily attendance and track your record</p>
         </div>
-        <span className="text-xs text-muted-foreground ml-auto">Attendance Window: {timeframe.start} - {timeframe.end}</span>
+        <span className="text-xs opacity-90 ml-auto">Attendance Window: {timeframe.start} - {timeframe.end}</span>
       </header>
 
-      <main className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-6">
         <Dialog open={isAttendanceDialogOpen} onOpenChange={setIsAttendanceDialogOpen}>
-            <Card>
+            <Card className="border border-primary/15">
                 <CardHeader>
-                    <CardTitle>Daily Check-in</CardTitle>
+                    <CardTitle className="text-primary">Daily Check-in</CardTitle>
                     <CardDescription>Timeframe to mark attendance: {timeframe.start} - {timeframe.end}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -317,48 +314,47 @@ export default function AttendancePage() {
         </Dialog>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1">
+          <Card className="lg:col-span-1 border border-primary/15">
             <CardHeader>
-              <CardTitle>Attendance Statistics</CardTitle>
+              <CardTitle className="text-primary">Attendance Statistics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm"><span>Attendance Rate</span><span className="font-medium">{attendanceRate}%</span></div>
-                    <div className="w-full bg-secondary rounded-full h-2"><div className="bg-green-600 h-2 rounded-full" style={{ width: `${attendanceRate}%` }} /></div>
+                    <div className="w-full bg-secondary rounded-full h-2"><div className="bg-primary h-2 rounded-full" style={{ width: `${attendanceRate}%` }} /></div>
                 </div>
-                <div className="grid grid-cols-3 gap-4 pt-4">
-                    <div className="text-center"><div className="text-2xl font-bold text-green-600">{attendanceRecords.filter((r) => r.status === "present").length}</div><div className="text-xs text-muted-foreground">Present</div></div>
-                    <div className="text-center"><div className="text-2xl font-bold text-orange-600">{attendanceRecords.filter((r) => r.status === "late").length}</div><div className="text-xs text-muted-foreground">Late</div></div>
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                    <div className="text-center"><div className="text-2xl font-bold text-primary">{attendanceRecords.filter((r) => r.status === "present").length}</div><div className="text-xs text-muted-foreground">Present</div></div>
                     <div className="text-center"><div className="text-2xl font-bold text-red-600">{attendanceRecords.filter((r) => r.status === "absent").length}</div><div className="text-xs text-muted-foreground">Absent</div></div>
                 </div>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 border border-primary/15">
             <CardHeader>
-              <CardTitle>Attendance Calendar</CardTitle>
+              <CardTitle className="text-primary">Attendance Calendar</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} className="rounded-md border" />
+              <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} className="rounded-md border border-primary/10" />
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <Card className="border border-primary/15">
           <CardHeader>
-            <CardTitle>Recent Attendance History</CardTitle>
+            <CardTitle className="text-primary">Recent Attendance History</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {attendanceRecords
                 .slice((historyPage - 1) * HISTORY_LIMIT, historyPage * HISTORY_LIMIT)
                 .map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={record.id} className="flex items-center justify-between p-3 border border-primary/10 rounded-lg">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 font-medium"><CalendarIcon className="h-4 w-4 text-muted-foreground" />{record.date} <span className="text-sm text-muted-foreground font-normal">at {record.time}</span></div>
+                    <div className="flex items-center gap-2 font-medium"><CalendarIcon className="h-4 w-4 text-primary" />{record.date} <span className="text-sm text-muted-foreground font-normal">at {record.time}</span></div>
                     <div className="flex items-center gap-4 pl-6 text-sm text-muted-foreground"><div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{record.location}</div><span>{record.sector}</span></div>
                   </div>
-                  <Badge variant={record.status === "present" ? "default" : record.status === "late" ? "destructive" : "secondary"}>{record.status}</Badge>
+                  <Badge variant={record.status === "present" ? "default" : "secondary"} className={record.status === "present" ? "bg-primary text-primary-foreground" : ""}>{record.status}</Badge>
                 </div>
               ))}
             </div>
@@ -373,6 +369,7 @@ export default function AttendancePage() {
                     variant="outline"
                     onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                     disabled={historyPage <= 1}
+                    className="border-primary/20 text-primary hover:bg-primary/5"
                   >
                     Prev
                   </Button>
@@ -380,6 +377,7 @@ export default function AttendancePage() {
                     variant="outline"
                     onClick={() => setHistoryPage((p) => Math.min(Math.max(1, Math.ceil(attendanceRecords.length / HISTORY_LIMIT)), p + 1))}
                     disabled={historyPage >= Math.ceil(attendanceRecords.length / HISTORY_LIMIT)}
+                    className="border-primary/20 text-primary hover:bg-primary/5"
                   >
                     Next
                   </Button>
@@ -388,7 +386,7 @@ export default function AttendancePage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   )
 }

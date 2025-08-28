@@ -12,7 +12,7 @@ import { useAttendance } from "@/contexts/AttendanceContext"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { AgentProfileCard } from "@/components/ui/agent-profile-card"
-import { getAgentDashboardData, getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance, syncAgentClients } from "@/lib/api"
+import { getAgentDashboardData, getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance } from "@/lib/api"
 import { IndividualAgentDashboardData, SalesAgentDashboardData, Activity } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Users, Clock, Calendar, Check, X, TrendingUp } from "lucide-react"
@@ -54,7 +54,6 @@ export default function AgentDashboard() {
   const [attendanceTimeframe, setAttendanceTimeframe] = useState<{ start: string; end: string }>({ start: "-", end: "-" })
   // Use the fetched attendanceTimeframe for all logic
   const [timeState, setTimeState] = useState({ isActive: false, isWarning: false, isExpired: false })
-  const [isSyncingClients, setIsSyncingClients] = useState(false)
   
 
   useEffect(() => {
@@ -235,81 +234,70 @@ export default function AgentDashboard() {
     return <DashboardLoadingSkeleton />;
   }
 
-  const handleSyncClients = async () => {
-    try {
-      setIsSyncingClients(true)
-      await syncAgentClients()
-      toast({ title: "Sync started", description: "Clients synchronization triggered." })
-    } catch (e: any) {
-      toast({ title: "Sync failed", description: e?.userFriendly || e?.message || "Please try again.", variant: "destructive" })
-    } finally {
-      setIsSyncingClients(false)
-    }
-  }
-
+  
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-2 sm:px-4 md:px-6">
+    <div className="flex flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <h1 className="text-lg sm:text-xl font-semibold truncate">Agent Dashboard</h1>
-        <div className="ml-auto flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-4">
-          <span className="text-xs text-muted-foreground md:mr-2 hidden sm:block">Attendance Window: {attendanceTimeframe.start} - {attendanceTimeframe.end}</span>
-          {getAttendanceButton()}
-          
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
+        <div className="flex-1">
+          <h1 className="text-xl font-semibold">Agent Dashboard</h1>
+          <p className="text-sm opacity-90">Welcome back, {localStorage.getItem("userName") || "Agent"}</p>
         </div>
-        <div className="flex items-center gap-2"></div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs opacity-90 hidden sm:block">Attendance: {attendanceTimeframe.start} - {attendanceTimeframe.end}</span>
+          {getAttendanceButton()}
+        </div>
       </header>
       {error && (
         <div className="p-4 text-center text-red-500 bg-red-50 border-b text-sm">{error}</div>
       )}
-      <main className="flex-1 space-y-4 sm:space-y-6 p-2 sm:p-4 md:p-6">
+      <div className="flex-1 space-y-6 p-6">
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clients This Month</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Clients This Month</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dataToUse?.clientsThisMonth ?? 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Total Clients</CardTitle>
+              <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dataToUse?.totalClients ?? 0}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Performance Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Performance Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dataToUse?.performanceRate ?? 0}%</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Actions</CardTitle>
+              <CardTitle className="text-sm font-medium text-primary">Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex gap-2">
-              <Button onClick={() => window.location.href = "/agent/clients"} variant="outline">My Clients</Button>
-              <Button onClick={handleSyncClients} disabled={isSyncingClients}>{isSyncingClients ? "Syncing…" : "Sync Clients"}</Button>
+              <Button onClick={() => window.location.href = "/agent/clients"} variant="outline" className="border-primary/20 text-primary hover:bg-primary/5">My Clients</Button>
             </CardContent>
           </Card>
         </div>
         {/* Always render both views, but pass fallback data if missing */}
-        {((dashboardData && dashboardData.groupName) || (!dashboardData && false)) ? (
+        {((dashboardData && (dashboardData as any).groupName) || (!dashboardData && false)) ? (
           <SalesAgentView data={dataToUse} />
         ) : (
           <IndividualAgentView data={dataToUse} />
         )}
-      </main>
+      </div>
       {renderAttendanceDialog()}
     </div>
   );
@@ -328,16 +316,16 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
         
       </div>
 
-      <Card>
+      <Card className="border border-primary/15">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-primary">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
             {recentActivities
               .slice((page - 1) * LIMIT, page * LIMIT)
               .map((activity: Activity) => (
-              <li key={activity.id} className="flex items-center justify-between rounded-md border p-3">
+              <li key={activity.id} className="flex items-center justify-between rounded-md border border-primary/10 p-3">
                 <div className="font-medium">{activity.description}</div>
                 <div className="text-sm text-muted-foreground">{activity.timestamp}</div>
               </li>
@@ -348,8 +336,8 @@ const IndividualAgentView: FC<{ data: IndividualAgentDashboardData }> = ({ data 
             <div className="flex items-center justify-between mt-3">
               <div className="text-xs text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(recentActivities.length / LIMIT))}</div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)}>Next</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="border-primary/20 text-primary hover:bg-primary/5">Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)} className="border-primary/20 text-primary hover:bg-primary/5">Next</Button>
               </div>
             </div>
           )}
@@ -378,16 +366,16 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
         
       </div>
 
-      <Card>
+      <Card className="border border-primary/15">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-primary">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
             {recentActivities
               .slice((page - 1) * LIMIT, page * LIMIT)
               .map((activity: Activity) => (
-              <li key={activity.id} className="flex items-center justify-between rounded-md border p-3">
+              <li key={activity.id} className="flex items-center justify-between rounded-md border border-primary/10 p-3">
                 <div className="font-medium">{activity.description}</div>
                 <div className="text-sm text-muted-foreground">{activity.timestamp}</div>
               </li>
@@ -398,8 +386,8 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
             <div className="flex items-center justify-between mt-3">
               <div className="text-xs text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(recentActivities.length / LIMIT))}</div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)}>Next</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="border-primary/20 text-primary hover:bg-primary/5">Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(recentActivities.length / LIMIT), p + 1))} disabled={page >= Math.ceil(recentActivities.length / LIMIT)} className="border-primary/20 text-primary hover:bg-primary/5">Next</Button>
               </div>
             </div>
           )}

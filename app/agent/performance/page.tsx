@@ -56,16 +56,16 @@ export default function PerformancePage() {
 
   return (
     <div className="flex flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">My Performance</h1>
-          <p className="text-sm text-muted-foreground">Review your attendance history</p>
+          <p className="text-sm opacity-90">Review your attendance history</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-32 bg-primary-foreground text-primary border-primary-foreground/30">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -79,20 +79,20 @@ export default function PerformancePage() {
       <div className="flex-1 space-y-6 p-6">
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Attendance Rate</CardTitle>
+              <Calendar className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.attendanceRate?.toFixed(1) || 0}%</div>
               <p className="text-xs text-muted-foreground">Based on {stats?.totalAttendanceDays || 0} days</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border border-primary/15">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Weekly Avg Hours</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-primary">Weekly Avg Hours</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.weeklyAvgHours?.toFixed?.(1) || 0}</div>
@@ -123,16 +123,7 @@ export default function PerformancePage() {
               <p className="text-xs text-muted-foreground">On-time attendance</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Late</CardTitle>
-              <XCircle className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.lateCount || 0}</div>
-              <p className="text-xs text-muted-foreground">Late arrivals</p>
-            </CardContent>
-          </Card>
+          {/* Late removed per backend contract */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Absent</CardTitle>
@@ -213,7 +204,7 @@ export default function PerformancePage() {
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="present" fill="#10b981" name="Present" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="late" fill="#f59e0b" name="Late" radius={[4, 4, 0, 0]} />
+                  {/* Late removed per backend contract */}
                   <Bar dataKey="absent" fill="#ef4444" name="Absent" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

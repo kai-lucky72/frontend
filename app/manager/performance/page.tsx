@@ -74,23 +74,50 @@ export default function ManagerPerformancePage() {
 
   useEffect(() => {
     const loadAgents = async () => {
-      setLoading(true)
-      setError(null)
-      try {
+        setLoading(true)
+        setError(null)
+        try {
         const list = await getAgents()
         setAgents(Array.isArray(list) ? list : [])
       } catch (e: any) {
         setError("Failed to load agents.")
-      } finally {
-        setLoading(false)
+        } finally {
+          setLoading(false)
+        }
       }
-    }
     loadAgents()
   }, [])
 
   const fetchClientsForAgent = async (agentId: string | number) => {
     const res = await getManagerAgentClients(agentId, { from: range.from, to: range.to, page: 1, limit: 50 })
     return Array.isArray((res as any)?.items) ? (res as any).items : []
+  }
+
+  const handleDownloadClients = async (agent: Agent) => {
+    try {
+      const params = new URLSearchParams()
+      params.set("startDate", range.from)
+      params.set("endDate", range.to)
+      params.set("format", "csv")
+      const url = `http://localhost:5238/api/manager/agents/${agent.id}/clients/download?${params.toString()}`
+      const token = localStorage.getItem("authToken")
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error("Failed to download clients")
+      const blob = await res.blob()
+      const dispo = res.headers.get("Content-Disposition") || ""
+      const match = dispo.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/)
+      const filename = decodeURIComponent(match?.[1] || match?.[2] || `agent_${agent.id}_clients_${Date.now()}.csv`)
+      const link = document.createElement("a")
+      const href = URL.createObjectURL(blob)
+      link.href = href
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(href)
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e?.message || "Unable to download clients.", variant: "destructive" })
+    }
   }
 
   const handleOpenClients = async (agent: Agent) => {
@@ -117,11 +144,11 @@ export default function ManagerPerformancePage() {
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Agent Performance</h1>
           <p className="text-sm opacity-90">Period: {period.replace("_", " ")} • {range.from} → {range.to}</p>
-        </div>
+      </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={(v: Period) => setPeriod(v)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
+            <SelectTrigger className="w-40 bg-primary-foreground text-primary border-primary-foreground/30">
+              <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="daily">Daily</SelectItem>
@@ -143,17 +170,17 @@ export default function ManagerPerformancePage() {
             {error && <div className="text-center py-8 text-red-500">{error}</div>}
             {!loading && !error && (
               <div className="rounded-md border border-primary/15 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
+              <Table>
+                <TableHeader>
+                  <TableRow>
                       <TableHead>Agent</TableHead>
                       <TableHead>Group</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Performance (%)</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                     {agents.map((a, index) => (
                       <TableRow key={`${String(a.id)}-${a.email || "noemail"}-${index}`}>
                         <TableCell>
@@ -166,13 +193,14 @@ export default function ManagerPerformancePage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleOpenClients(a)}>Get Clients</Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDownloadClients(a)}>Download</Button>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+          </div>
             )}
           </CardContent>
         </Card>
@@ -217,7 +245,7 @@ export default function ManagerPerformancePage() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+          </div>
           )}
         </DialogContent>
       </Dialog>
