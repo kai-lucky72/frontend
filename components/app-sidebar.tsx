@@ -103,17 +103,10 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
       </div>
       <Sidebar variant="sidebar" collapsible="offcanvas" {...props}>
         <SidebarHeader className="border-b border-sidebar-border">
-          <div className="flex items-center justify-between px-3 py-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-sm sm:text-lg font-semibold truncate">Prime Management</h2>
-                <p className="text-xs text-muted-foreground truncate">{getPortalTitle()}</p>
-              </div>
+          <div className="flex items-center px-3 py-4">
+            <div className="flex items-center gap-3">
+              <img src="https://prime.rw/public/themes/assets/img/Prime_Life_Insurance_Logo.PNG" alt="Prime Life Insurance" className="h-10 sm:h-12 w-auto object-contain flex-shrink-0" />
             </div>
-            <SidebarTrigger className="hidden md:inline-flex h-8 w-8 p-0 flex-shrink-0">
-              <X className="h-4 w-4" />
-            </SidebarTrigger>
           </div>
         </SidebarHeader>
 

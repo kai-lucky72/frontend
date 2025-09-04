@@ -9,6 +9,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    domains: ['prime.rw'],
   },
   async headers() {
     return [
@@ -30,7 +31,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5238/api/:path*",
+        destination: "https://apps.prime.rw/agentmanagementbackend/api/:path*",
       },
     ];
   },

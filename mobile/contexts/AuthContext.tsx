@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       
       // API call to backend
-      const response = await fetch('http://10.50.0.50:8080/api/auth/login', {
+      const response = await fetch('https://apps.prime.rw/agentmanagementbackend/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

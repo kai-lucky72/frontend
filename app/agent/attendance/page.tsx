@@ -65,7 +65,7 @@ export default function AttendancePage() {
         }
         // Fetch attendance history
         const token = localStorage.getItem('authToken')
-        const res = await fetch('http://localhost:5238/api/agent/attendance/history', {
+        const res = await fetch('https://apps.prime.rw/agentmanagementbackend/api/agent/attendance/history', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!res.ok) throw new Error('Failed to fetch attendance history')

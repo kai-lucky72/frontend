@@ -85,9 +85,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm sm:max-w-md mx-auto">
         <CardHeader className="space-y-1 text-center px-4 sm:px-6">
           <div className="flex items-center justify-center mb-4">
-            <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
+            <img
+              src="https://prime.rw/public/themes/assets/img/Prime_Life_Insurance_Logo.PNG"
+              alt="Prime Life Insurance"
+              className="h-24 sm:h-28 w-auto object-contain"
+            />
           </div>
-          <CardTitle className="text-xl sm:text-2xl font-bold">Prime Agent Management</CardTitle>
           <CardDescription className="text-sm">Sign in with your Phone and Password</CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">

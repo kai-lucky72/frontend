@@ -11,7 +11,9 @@ import {
   Group,
 } from "@/lib/types";
 
-const API_URL = "http://localhost:5238/api";
+const API_URL = "https://apps.prime.rw/agentmanagementbackend/api";
+console.log('API_URL loaded:', API_URL); // Debug log
+console.log('This should show the new URL:', API_URL);
 
 // ====================================================================
 // ERROR HANDLING UTILITIES
@@ -119,7 +121,9 @@ async function fetchApi(path: string, options: RequestInit = {}): Promise<any> {
   }
 
   try {
-    const response = await fetch(`${API_URL}${path}`, {
+    const fullUrl = `${API_URL}${path}`;
+    console.log('API Request URL:', fullUrl); // Debug log
+    const response = await fetch(fullUrl, {
       ...options,
       headers,
     });

@@ -152,7 +152,7 @@ Use these credentials to test different roles:
 
 The mobile app is designed to work with the same backend API as the web application:
 
-- **Base URL:** `http://localhost:5238/api`
+- **Base URL:** `https://apps.prime.rw/agentmanagementbackend/api`
 - **Authentication:** JWT token-based
 - **Data Format:** JSON
 - **Error Handling:** Comprehensive error management

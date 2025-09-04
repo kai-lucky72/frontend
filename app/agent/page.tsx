@@ -176,7 +176,7 @@ export default function AgentDashboard() {
     if (timeState.isActive) {
       console.log("Rendering ACTIVE attendance button")
       return (
-        <Button size="lg" onClick={() => setIsAttendanceDialogOpen(true)} className={`w-full bg-red-600 hover:bg-red-700`}>
+        <Button size="lg" onClick={() => setIsAttendanceDialogOpen(true)} className={`w-full bg-primary hover:bg-primary/90`}>
           <Clock className="mr-2 h-5 w-5" />
           Mark Attendance
         </Button>
@@ -184,7 +184,7 @@ export default function AgentDashboard() {
     }
     console.log("Rendering DISABLED attendance button")
     return (
-      <Button size="lg" disabled className={`w-full bg-gray-400`}>
+      <Button size="lg" disabled variant="outline" className={`w-full`}>
         <Clock className="mr-2 h-5 w-5" />
         Mark Attendance (Disabled)
       </Button>
@@ -400,9 +400,9 @@ const SalesAgentView: FC<{ data: SalesAgentDashboardData }> = ({ data }) => {
 function DashboardLoadingSkeleton() {
   return (
     <div className="flex flex-col flex-1">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 px-4 bg-primary text-primary-foreground">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Separator orientation="vertical" className="mr-2 h-4 bg-primary-foreground/20" />
         <h1 className="text-xl font-semibold">Agent Dashboard</h1>
       </header>
       <main className="flex-1 space-y-4 p-4 md:p-6">

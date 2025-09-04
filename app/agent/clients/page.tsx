@@ -89,7 +89,7 @@ export default function AgentClientsPage() {
       if (from && from !== "auto") params.set("startDate", from)
       if (to) params.set("endDate", to)
       params.set("format", "csv")
-      const url = `http://localhost:5238/api/agent/clients/download?${params.toString()}`
+      const url = `https://apps.prime.rw/agentmanagementbackend/api/agent/clients/download?${params.toString()}`
       const token = localStorage.getItem("authToken")
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error("Failed to download clients")

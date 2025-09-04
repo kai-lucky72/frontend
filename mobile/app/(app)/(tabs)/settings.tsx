@@ -183,7 +183,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>API Endpoint</Text>
-                              <Text style={styles.infoValue}>http://10.50.0.50:5238</Text>
+                              <Text style={styles.infoValue}>https://apps.prime.rw/agentmanagementbackend</Text>
             </View>
           </View>
         </View>

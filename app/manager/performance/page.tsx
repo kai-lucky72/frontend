@@ -99,7 +99,7 @@ export default function ManagerPerformancePage() {
       params.set("startDate", range.from)
       params.set("endDate", range.to)
       params.set("format", "csv")
-      const url = `http://localhost:5238/api/manager/agents/${agent.id}/clients/download?${params.toString()}`
+      const url = `https://apps.prime.rw/agentmanagementbackend/api/manager/agents/${agent.id}/clients/download?${params.toString()}`
       const token = localStorage.getItem("authToken")
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error("Failed to download clients")
