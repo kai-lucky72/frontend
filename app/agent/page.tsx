@@ -29,6 +29,7 @@ export default function AgentDashboard() {
   // remove mock toggle
   const { isAttendanceMarked, attendanceTime, refreshAttendanceStatus } = useAttendance()
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
       const fetchDashboardData = async () => {
@@ -287,7 +288,7 @@ export default function AgentDashboard() {
               <CardTitle className="text-sm font-medium text-primary">Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex gap-2">
-              <Button onClick={() => window.location.href = "/agent/clients"} variant="outline" className="border-primary/20 text-primary hover:bg-primary/5">My Clients</Button>
+              <Button onClick={() => router.push("/agent/clients")} variant="outline" className="border-primary/20 text-primary hover:bg-primary/5">My Clients</Button>
             </CardContent>
           </Card>
         </div>

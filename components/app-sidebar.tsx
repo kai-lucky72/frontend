@@ -118,10 +118,13 @@ export function AppSidebar({ userRole, ...props }: AppSidebarProps) {
                 {getNavItems().map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={pathname === item.url} className="h-12 px-3">
-                      <a href={item.url} className="flex items-center gap-3">
+                      <button 
+                        onClick={() => router.push(item.url)} 
+                        className="flex items-center gap-3 w-full text-left"
+                      >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
                         <span className="text-sm font-medium">{item.title}</span>
-                      </a>
+                      </button>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

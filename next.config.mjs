@@ -11,30 +11,10 @@ const nextConfig = {
     unoptimized: true,
     domains: ['prime.rw'],
   },
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'no-store' },
-        ],
-      },
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-    ]
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://apps.prime.rw/agentmanagementbackend/api/:path*",
-      },
-    ];
-  },
+  basePath: '/agentmanagement-test',
+  assetPrefix: '/agentmanagement-test', // Add this line
+  output: 'export',
+  trailingSlash: true,
 }
 
 export default nextConfig

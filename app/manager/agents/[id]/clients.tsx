@@ -1,3 +1,10 @@
+
+export const dynamicParams = true; // Allow dynamic route params
+// Provide empty generateStaticParams to satisfy Next.js
+export async function generateStaticParams() {
+  return []; // Return empty array - pages will be generated on-demand
+}
+
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
