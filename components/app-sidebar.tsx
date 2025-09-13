@@ -50,6 +50,8 @@ const managerNavItems = [
   { title: "Sales Agents", url: "/manager/agents", icon: Users },
   { title: "Performance", url: "/manager/performance", icon: BarChart3 },
   { title: "Attendance", url: "/manager/attendance", icon: Clock },
+  { title: "Teams", url: "/manager/teams", icon: Users },
+  { title: "Teams Performance", url: "/manager/teams/performance", icon: BarChart3 },
   { title: "Notifications", url: "/manager/notifications", icon: Bell },
 ]
 
@@ -58,6 +60,7 @@ const agentNavItems = [
   { title: "My Clients", url: "/agent/clients", icon: Users },
   { title: "Attendance", url: "/agent/attendance", icon: UserCheck },
   { title: "My Performance", url: "/agent/performance", icon: BarChart3 },
+  { title: "My Team", url: "/agent/team", icon: Users },
   { title: "Notifications", url: "/agent/notifications", icon: Bell },
 ]
 

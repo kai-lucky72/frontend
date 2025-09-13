@@ -12,7 +12,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { getAgents, getManagerAgentClients } from "@/lib/api"
+import { getAgents, getManagerAgentClients, API_URL } from "@/lib/api"
 import type { Agent } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -99,7 +99,7 @@ export default function ManagerPerformancePage() {
       params.set("startDate", range.from)
       params.set("endDate", range.to)
       params.set("format", "csv")
-      const url = `https://apps.prime.rw/agentmanagementbackend/api/manager/agents/${agent.id}/clients/download?${params.toString()}`
+      const url = `${API_URL}/manager/agents/${agent.id}/clients/download?${params.toString()}`
       const token = localStorage.getItem("authToken")
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error("Failed to download clients")

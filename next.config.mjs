@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
 const nextConfig = {
   transpilePackages: ['use-client'],
   eslint: {
@@ -11,8 +13,9 @@ const nextConfig = {
     unoptimized: true,
     domains: ['prime.rw'],
   },
-  basePath: '/agentmanagement-test',
-  assetPrefix: '/agentmanagement-test', // Add this line
+  // Use basePath/assetPrefix only when provided (e.g., production export hosting)
+  basePath: basePath || undefined,
+  assetPrefix: basePath || undefined,
   output: 'export',
   trailingSlash: true,
 }
