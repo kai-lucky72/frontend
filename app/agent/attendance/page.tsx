@@ -21,7 +21,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { MapPin, Clock, CheckCircle, CalendarIcon, Shield } from "lucide-react"
-import { getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance } from "@/lib/api"
+import { getAgentAttendanceTimeframe, getAgentAttendanceStatus, markAgentAttendance, API_URL } from "@/lib/api"
 
 // --- Interfaces and Data ---
 interface AttendanceRecord {
@@ -65,7 +65,7 @@ export default function AttendancePage() {
         }
         // Fetch attendance history
         const token = localStorage.getItem('authToken')
-        const res = await fetch('https://apps.prime.rw/agentmanagementbackend/api/agent/attendance/history', {
+        const res = await fetch(`${API_URL}/agent/attendance/history`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!res.ok) throw new Error('Failed to fetch attendance history')

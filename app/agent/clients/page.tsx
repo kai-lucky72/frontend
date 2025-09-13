@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { getAgentClients } from "@/lib/api"
+import { getAgentClients, API_URL } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AgentClientsPage() {
@@ -89,7 +89,7 @@ export default function AgentClientsPage() {
       if (from && from !== "auto") params.set("startDate", from)
       if (to) params.set("endDate", to)
       params.set("format", "csv")
-      const url = `https://apps.prime.rw/agentmanagementbackend/api/agent/clients/download?${params.toString()}`
+      const url = `${API_URL}/agent/clients/download?${params.toString()}`
       const token = localStorage.getItem("authToken")
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error("Failed to download clients")

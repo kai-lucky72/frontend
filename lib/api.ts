@@ -11,9 +11,7 @@ import {
   Group,
 } from "@/lib/types";
 
-const API_URL = "https://apps.prime.rw/agentmanagementbackend/api";
-console.log('API_URL loaded:', API_URL); // Debug log
-console.log('This should show the new URL:', API_URL);
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5238/api";
 
 // ====================================================================
 // ERROR HANDLING UTILITIES
@@ -277,6 +275,23 @@ export const updateManagerTimeframe = async (timeframe: { startTime: string; end
 };
 
 // ====================================================================
+// TEAM MANAGEMENT (Manager)
+// ====================================================================
+
+export const createTeam = async (payload: { leaderAgentId: number | string; teamName?: string; memberAgentIds: Array<number | string> }): Promise<{ groupId: number; teamName: string; leaderId: number }> => {
+  return fetchApi(`/manager/teams`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+// List existing groups/teams (using existing endpoint)
+export const listTeams = async (): Promise<Array<{ id: string | number; name: string }>> => {
+  // Reuse existing groups endpoint
+  return fetchApi('/manager/groups');
+};
+
+// ====================================================================
 // MANAGER - AGENT MANAGEMENT API
 // ====================================================================
 
@@ -506,9 +521,132 @@ export const markAllNotificationsAsRead = async (): Promise<{ updated: number }>
   });
 };
 
+// ====================================================================
+// GROUP PERFORMANCE (Agent - Team Leader View)
+// ====================================================================
+
+export const getGroupPerformance = async (): Promise<any> => {
+  return fetchApi('/agent/group-performance');
+};
+
+// ====================================================================
+// TEAM PERFORMANCE (Manager & Team Leader)
+// ====================================================================
+
+// Get specific team performance (manager only)
+export const getTeamPerformance = async (teamId: string | number, period: string = "weekly"): Promise<any> => {
+  return fetchApi(`/manager/teams/${teamId}/performance?period=${period}`);
+};
+
+// Get all teams performance summary (manager only)
+export const getAllTeamsPerformance = async (period: string = "weekly"): Promise<any> => {
+  return fetchApi(`/manager/teams/performance?period=${period}`);
+};
+
+// Get team leader's team performance (team leader only)
+export const getTeamLeaderPerformance = async (period: string = "weekly"): Promise<any> => {
+  return fetchApi(`/agent/team/performance?period=${period}`);
+};
+
+// Delete team (manager only)
+export const deleteTeam = async (teamId: string | number): Promise<{ message: string; teamId: number }> => {
+  try {
+    return await fetchApi(`/manager/teams/${teamId}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    const apiError = parseApiError(error);
+    if (apiError.status === 404) {
+      apiError.userFriendly = "Team not found. It may have already been deleted.";
+    } else if (apiError.status === 403) {
+      apiError.userFriendly = "You do not have permission to delete this team.";
+    }
+    throw apiError;
+  }
+};
+
+// Update team members (add/remove agents)
+export const updateTeamMembers = async (
+  teamId: string | number, 
+  agentIdsToAdd: string[] = [], 
+  agentIdsToRemove: string[] = []
+): Promise<{ message: string; addedCount: number; removedCount: number; skippedCount: number }> => {
+  try {
+    return await fetchApi(`/manager/teams/${teamId}/members`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        agentIdsToAdd,
+        agentIdsToRemove,
+      }),
+    });
+  } catch (error) {
+    const apiError = parseApiError(error);
+    if (apiError.status === 404) {
+      apiError.userFriendly = "Team not found.";
+    } else if (apiError.status === 403) {
+      apiError.userFriendly = "You do not have permission to modify this team.";
+    } else if (apiError.status === 400) {
+      apiError.userFriendly = "Invalid agent IDs provided. Some agents may not exist or are not available.";
+    }
+    throw apiError;
+  }
+};
+
+// Change team leader
+export const changeTeamLeader = async (
+  teamId: string | number, 
+  newLeaderId: string
+): Promise<{ message: string; teamId: number; newLeaderId: number }> => {
+  try {
+    return await fetchApi(`/manager/teams/${teamId}/leader`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        leaderAgentId: newLeaderId,
+      }),
+    });
+  } catch (error) {
+    const apiError = parseApiError(error);
+    if (apiError.status === 404) {
+      apiError.userFriendly = "Team or agent not found.";
+    } else if (apiError.status === 403) {
+      apiError.userFriendly = "You do not have permission to change this team's leader.";
+    } else if (apiError.status === 400) {
+      apiError.userFriendly = "Invalid leader ID. The selected agent may not be available or not in this team.";
+    }
+    throw apiError;
+  }
+};
+
 export const getAgentAttendanceTimeframe = async (): Promise<{ startTime: string; endTime: string }> => {
   return fetchApi('/agent/attendance/timeframe');
 };
+
+// Create agent (admin/manager only)
+export const createAgent = async (agentData: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  type: 'sales' | 'manager';
+}): Promise<{ id: string; message: string }> => {
+  try {
+    return await fetchApi('/admin/agents', {
+      method: 'POST',
+      body: JSON.stringify(agentData),
+    });
+  } catch (error) {
+    const apiError = parseApiError(error);
+    if (apiError.status === 400) {
+      apiError.userFriendly = "Invalid agent data provided.";
+    } else if (apiError.status === 403) {
+      apiError.userFriendly = "You do not have permission to create agents.";
+    } else if (apiError.status === 409) {
+      apiError.userFriendly = "An agent with this email already exists.";
+    }
+    throw apiError;
+  }
+};
+
 
 export const getAgentAttendanceStatus = async (): Promise<{ hasMarkedToday: boolean; time?: string }> => {
   return fetchApi('/agent/attendance/status');

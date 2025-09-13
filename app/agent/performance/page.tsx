@@ -11,6 +11,7 @@ import { TrendingUp, Calendar, CheckCircle2, XCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
+import { API_URL } from "@/lib/api"
 
 export default function PerformancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState("weekly")
@@ -28,7 +29,7 @@ export default function PerformancePage() {
         setError(null)
         try {
           const token = localStorage.getItem('authToken')
-          const res = await fetch(`https://apps.prime.rw/agentmanagementbackend/api/agent/performance?period=${selectedPeriod}`, {
+          const res = await fetch(`${API_URL}/agent/performance?period=${selectedPeriod}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           if (!res.ok) throw new Error('Failed to fetch performance data')

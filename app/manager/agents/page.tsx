@@ -24,10 +24,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle, RefreshCw, Users as UsersIcon } from "lucide-react"
+import { UserPlus, Edit, Trash2, Phone, Mail, Eye, BadgeIcon as IdCard, AlertCircle, RefreshCw, Users as UsersIcon, Crown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Agent } from "@/lib/types"
-import { getAgents, updateAgent, deleteAgent, getManagerAgentClients } from "@/lib/api"
+import { getAgents, updateAgent, deleteAgent, getManagerAgentClients, createTeam } from "@/lib/api"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
@@ -45,10 +45,14 @@ export default function AgentsPage() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [agentToDelete, setAgentToDelete] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [teamMembers, setTeamMembers] = useState<string[]>([])
+  const [teamName, setTeamName] = useState<string>("")
+  const leaderSelected = selectedAgent?.id ? String(selectedAgent.id) : ""
 
   const { toast } = useToast()
   const router = useRouter()
@@ -222,6 +226,20 @@ export default function AgentsPage() {
                         >
                           <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
+                        {agent.type === "sales" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedAgent(agent)
+                              setIsPromoteDialogOpen(true)
+                            }}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            title="Promote to Team Leader"
+                          >
+                            <Crown className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                        )}
                         {/* Sync removed per backend guidance (external-only mode) */}
                         <Button
                           variant="ghost"
@@ -325,6 +343,70 @@ export default function AgentsPage() {
                   <p className="text-sm">{selectedAgent.attendanceRate}%</p>
                 </div>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Promote to Team Leader Dialog */}
+      <Dialog open={isPromoteDialogOpen} onOpenChange={(o) => { setIsPromoteDialogOpen(o); if (!o) { setTeamMembers([]); setTeamName(""); } }}>
+        <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Promote to Team Leader</DialogTitle>
+            <DialogDescription>Select members and optionally set a team name.</DialogDescription>
+          </DialogHeader>
+          {selectedAgent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Leader</Label>
+                  <p className="text-sm">{selectedAgent.firstName} {selectedAgent.lastName}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Team Name (optional)</Label>
+                  <input className="border rounded h-9 px-2 w-full" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Team John Doe" />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="text-sm font-medium">Members</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {agents.filter(a => String(a.id) !== leaderSelected && a.type === "sales").map(a => {
+                      const id = String(a.id)
+                      const active = teamMembers.includes(id)
+                      return (
+                        <Button key={id} type="button" variant={active ? "default" : "outline"} size="sm" onClick={() => setTeamMembers(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}>
+                          {a.firstName}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Pick at least one member. The leader cannot be selected as a member.</p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setIsPromoteDialogOpen(false); setTeamMembers([]); setTeamName(""); }}>Cancel</Button>
+                <Button
+                  onClick={async () => {
+                    if (!selectedAgent) return
+                    if (teamMembers.length === 0) { toast({ title: "Members required", description: "Select at least one member.", variant: "destructive" }); return }
+                    try {
+                      const payload = {
+                        leaderAgentId: Number.isNaN(Number(selectedAgent.id)) ? selectedAgent.id : Number(selectedAgent.id),
+                        teamName: teamName || undefined,
+                        memberAgentIds: teamMembers.map(m => Number.isNaN(Number(m)) ? m : Number(m)),
+                      }
+                      const res = await createTeam(payload as any)
+                      toast({ title: "Team created", description: `${res.teamName} created.` })
+                      setIsPromoteDialogOpen(false)
+                      setTeamMembers([])
+                      setTeamName("")
+                    } catch (e: any) {
+                      toast({ title: "Failed", description: e?.userFriendly || e?.message, variant: "destructive" })
+                    }
+                  }}
+                >
+                  Promote & Assign
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
